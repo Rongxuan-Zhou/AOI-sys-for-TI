@@ -27,13 +27,11 @@
 ## Machine Overview
 
 <p align="center">
-  <img src="docs/images/pdf_pages/machine_3d_overview.png" width="48%" alt="Machine 3D Overview"/>
-  <img src="docs/images/pdf_pages/machine_exploded_view.png" width="48%" alt="Machine Exploded View"/>
+  <img src="docs/images/pdf_pages/ccd_deployment_specs.png" width="80%" alt="Machine Overview - 3D View with Dimensions"/>
 </p>
 
 <p align="center">
-  <em>Left: Complete AOI equipment (1800 x 1600 x 2000 mm) with enclosure, HMI, and Tri-Color indicator.
-  Right: Internal layout showing all 18 functional stations.</em>
+  <em>Complete AOI equipment (1800 x 1600 x 2000 mm): 3D enclosure view with HMI, Tri-Color indicator, optical grating protection, and internal layout.</em>
 </p>
 
 ---
@@ -85,6 +83,14 @@ This project implements the complete vision inspection and material handling con
 
 ## Vision System
 
+<p align="center">
+  <img src="docs/images/pdf_pages/testing_report_defect_matrix.png" width="80%" alt="Visual Systems Deploy - CCD1-4 Specifications"/>
+</p>
+
+<p align="center">
+  <em>4-CCD deployment specifications: CCD#1 Top, CCD#2 Side, CCD#3 Bottom (MV-GE501GC, 0.0115mm/px), CCD#4 Inner lighting check (MV-GE2000C, 0.0069mm/px).</em>
+</p>
+
 | Camera | Model | Lens | Light Source | Resolution | FOV | WD | Function |
 |:-------|:------|:-----|:------------|:-----------|:----|:---|:---------|
 | CCD #1 | MV-GE501GC | WWK03-110-230 | DN-COS60-W (coaxial) | 0.0115 mm/px | 28 x 24 mm | 110 +/- 2 mm | Top surface, markings, misalignment |
@@ -95,24 +101,6 @@ This project implements the complete vision inspection and material handling con
 ---
 
 ## Defect Classification
-
-<p align="center">
-  <img src="docs/images/pdf_pages/visual_system_4ccd_layout.png" width="48%" alt="4-CCD Visual System Layout"/>
-  <img src="docs/images/pdf_pages/ccd_deployment_specs.png" width="48%" alt="CCD Deployment Specifications"/>
-</p>
-
-<p align="center">
-  <em>Left: 4-CCD multi-angle inspection configuration -- top, side, bottom, and inner (lighting) check.
-  Right: Per-camera deployment specifications showing camera, lens, light source, resolution, FOV, and WD.</em>
-</p>
-
-<p align="center">
-  <img src="docs/images/pdf_pages/testing_report_defect_matrix.png" width="70%" alt="Testing Report - Defect Detection Matrix"/>
-</p>
-
-<p align="center">
-  <em>Defect detection validation matrix: 19 categories across Function, Cosmetic, and Assembly groups. Detection rate: 100% on all provided samples.</em>
-</p>
 
 | Group | Defects | CCD |
 |:------|:--------|:----|
@@ -189,11 +177,11 @@ flowchart TB
 ## Process Flow
 
 <p align="center">
-  <img src="docs/images/pdf_pages/machine_overview_18stations.png" width="90%" alt="Machine Overview - 18 Stations"/>
+  <img src="docs/images/pdf_pages/machine_exploded_view.png" width="90%" alt="Process Flow - Top-down Layout and Flowchart"/>
 </p>
 
 <p align="center">
-  <em>Machine overview with all 18 numbered stations: Loading (1-4), Inspection (5-11), Output (12-16), NG Path (17-18). Each step maps to a physical station.</em>
+  <em>18-step process flow: top-down machine layout (left) with numbered station positions, and corresponding step-by-step flowchart (right) showing OK and NG paths.</em>
 </p>
 
 ### Key Process Stages
