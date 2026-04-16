@@ -6,11 +6,11 @@
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Platform: Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org)
-[![Vision: GigE Vision 2.0](https://img.shields.io/badge/Vision-GigE%20Vision%202.0-00979D.svg)](https://www.visiononline.org)
+[![Vision: GigE Vision 2.0](https://img.shields.io/badge/Vision-GigE%20Vision%202.0-00979D.svg)](https://www.automate.org/vision)
 [![Camera: Hikrobot](https://img.shields.io/badge/Camera-Hikrobot%20MV--GE-green.svg)](https://www.hikrobotics.com)
-[![Robot: Epson SCARA](https://img.shields.io/badge/Robot-Epson%20SCARA-orange.svg)](https://epson.com/industrial-robots)
+[![Robot: Epson SCARA](https://img.shields.io/badge/Robot-Epson%20SCARA-orange.svg)](https://epson.com/scara-robots)
 [![Fieldbus: CC-Link IE](https://img.shields.io/badge/Fieldbus-CC--Link%20IE%20Field-7B2D8B.svg)](https://www.cc-link.org)
-[![Safety: ISO 13849 PLd](https://img.shields.io/badge/Safety-ISO%2013849%20PLd-red.svg)](#safety-architecture)
+[![Safety: ISO 13849 PLd](https://img.shields.io/badge/Safety-ISO%2013849%20PLd-red.svg)](#technology-stack)
 [![Defects: 19 Categories](https://img.shields.io/badge/Defects-19%20Categories-critical.svg)](#defect-classification)
 
 *Production-grade automated optical inspection system for Texas Instruments CSE (Chip Scale Element)*
