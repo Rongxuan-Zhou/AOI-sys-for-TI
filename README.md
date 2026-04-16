@@ -85,16 +85,6 @@ This project implements the complete vision inspection and material handling con
 
 ## Vision System
 
-<p align="center">
-  <img src="docs/images/pdf_pages/visual_system_4ccd_layout.png" width="48%" alt="4-CCD Visual System Layout"/>
-  <img src="docs/images/pdf_pages/ccd_deployment_specs.png" width="48%" alt="CCD Deployment Specifications"/>
-</p>
-
-<p align="center">
-  <em>Left: 4-CCD multi-angle inspection configuration -- top, side, bottom, and inner (lighting) check.
-  Right: Per-camera deployment specifications showing camera, lens, light source, resolution, FOV, and WD.</em>
-</p>
-
 | Camera | Model | Lens | Light Source | Resolution | FOV | WD | Function |
 |:-------|:------|:-----|:------------|:-----------|:----|:---|:---------|
 | CCD #1 | MV-GE501GC | WWK03-110-230 | DN-COS60-W (coaxial) | 0.0115 mm/px | 28 x 24 mm | 110 +/- 2 mm | Top surface, markings, misalignment |
@@ -105,6 +95,16 @@ This project implements the complete vision inspection and material handling con
 ---
 
 ## Defect Classification
+
+<p align="center">
+  <img src="docs/images/pdf_pages/visual_system_4ccd_layout.png" width="48%" alt="4-CCD Visual System Layout"/>
+  <img src="docs/images/pdf_pages/ccd_deployment_specs.png" width="48%" alt="CCD Deployment Specifications"/>
+</p>
+
+<p align="center">
+  <em>Left: 4-CCD multi-angle inspection configuration -- top, side, bottom, and inner (lighting) check.
+  Right: Per-camera deployment specifications showing camera, lens, light source, resolution, FOV, and WD.</em>
+</p>
 
 <p align="center">
   <img src="docs/images/pdf_pages/testing_report_defect_matrix.png" width="70%" alt="Testing Report - Defect Detection Matrix"/>
@@ -126,14 +126,6 @@ This project implements the complete vision inspection and material handling con
 ---
 
 ## System Architecture
-
-<p align="center">
-  <img src="docs/images/pdf_pages/machine_overview_18stations.png" width="70%" alt="Machine Overview - 18 Stations"/>
-</p>
-
-<p align="center">
-  <em>Machine overview with all 18 numbered stations: Loading (1-4), Inspection (5-11), Output (12-16), NG Path (17-18).</em>
-</p>
 
 ```mermaid
 flowchart TB
@@ -197,11 +189,11 @@ flowchart TB
 ## Process Flow
 
 <p align="center">
-  <img src="docs/images/pdf_pages/process_flow_18steps.png" width="90%" alt="18-Step Process Flow"/>
+  <img src="docs/images/pdf_pages/machine_overview_18stations.png" width="90%" alt="Machine Overview - 18 Stations"/>
 </p>
 
 <p align="center">
-  <em>Complete 18-step process flow with OK and NG paths. Each step maps to a physical station in the machine layout above.</em>
+  <em>Machine overview with all 18 numbered stations: Loading (1-4), Inspection (5-11), Output (12-16), NG Path (17-18). Each step maps to a physical station.</em>
 </p>
 
 ### Key Process Stages
