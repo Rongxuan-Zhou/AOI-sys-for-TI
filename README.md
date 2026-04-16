@@ -218,21 +218,32 @@ Detailed technical documentation covering every subsystem:
 
 ## Source Code
 
-> **Python 3.10+** -- Production control software implementing the complete 18-step AOI sequence, multi-CCD vision pipeline, and material handling coordination. See [`src/README.md`](src/README.md) for detailed module documentation.
+> **C++ 17 / IEC 61131-3 ST** -- Real-time vision pipeline and PLC control logic. C++ handles performance-critical image acquisition and defect detection via Hikrobot MVS SDK. PLC structured text implements the 18-step inspection state machine and safety logic.
 
 | Module | File | Description |
 |:-------|:-----|:------------|
-| **Inspection** | [`InspectionSequencer.py`](src/inspection/InspectionSequencer.py) | Master 18-step state machine orchestrating the full inspection cycle |
-| **Vision** | [`CameraController.py`](src/vision/CameraController.py) | Multi-CCD acquisition and triggering (GigE Vision / Hikrobot MVS SDK) |
-| | [`LightingCheckAnalyzer.py`](src/vision/LightingCheckAnalyzer.py) | CCD #4 closed-chamber light leakage analysis with sapphire glass compensation |
-| | [`DefectClassifier.py`](src/vision/DefectClassifier.py) | 19-category defect classification pipeline (per-CCD detector routing) |
-| | [`OrientationDetector.py`](src/vision/OrientationDetector.py) | Poka-Yoke orientation detection and servo compensation angle calculation |
-| **Material Handling** | [`RobotController.py`](src/material_handling/RobotController.py) | Epson SCARA interface (SPEL+ TCP/IP), dual nozzle, 4 CSE per pick cycle |
-| | [`TransferControl.py`](src/material_handling/TransferControl.py) | Transfer #1-#6 with camera-trigger callbacks and orientation compensation |
-| | [`PitchChanger.py`](src/material_handling/PitchChanger.py) | E-cylinder pitch change with 180-degree flip logic |
-| **NG Management** | [`NGSorter.py`](src/ng_management/NGSorter.py) | NG double-check reconfirmation, conveyor sorting, per-defect statistics |
-| **Data Types** | [`defect_types.py`](src/data_types/defect_types.py) | DefectType enum (19), DefectSeverity, CameraID, InspectionResult dataclasses |
-| | [`system_config.py`](src/global_variables/system_config.py) | Camera specs, detection thresholds, transfer positions, timing targets |
+| **Vision (C++)** | [`GigEVisionCapture.cpp`](src/vision/GigEVisionCapture.cpp) | GigE Vision 2.0 acquisition, HW trigger, Jumbo Frame, lock-free ring buffer |
+| | [`ImagePreprocessor.cpp`](src/vision/ImagePreprocessor.cpp) | Bayer demosaic, CLAHE, flat-field correction, sapphire glass compensation, cylindrical unwrap |
+| | [`DefectDetector.cpp`](src/vision/DefectDetector.cpp) | 19-category detection engine: template matching, blob analysis, pin geometry, code OCR |
+| | [`pybind_module.cpp`](src/vision/pybind_module.cpp) | pybind11 bindings for offline analysis tools |
+| | [`CMakeLists.txt`](src/vision/CMakeLists.txt) | Build config: OpenCV 4.x, Hikrobot MVS SDK, pybind11 |
+| **PLC (ST)** | [`main_sequence.st`](src/plc/main_sequence.st) | 18-step inspection state machine, CC-Link IE Field cyclic I/O, vision trigger handshake |
+| | [`safety_program.st`](src/plc/safety_program.st) | ISO 13849-1 PLd Cat.3 safety logic, E-Stop, light curtain, STO |
+| | [`servo_config.st`](src/plc/servo_config.st) | 8-axis servo profiles, homing sequences, CC-Link IE Field drive mapping |
+| | [`io_mapping.csv`](src/plc/io_mapping.csv) | I/O allocation table: 128 DI + 48 DO |
+
+### Offline Tools
+
+> **Python 3.10+** -- Non-real-time utilities for calibration, data analysis, and offline simulation. Not part of the production control path.
+
+| Tool | File | Description |
+|:-----|:-----|:------------|
+| **Calibration** | [`camera_calibration.py`](tools/calibration/camera_calibration.py) | Spatial and illumination calibration pipeline for 4-CCD system |
+| | [`orientation_calibration.py`](tools/calibration/orientation_calibration.py) | Poka-Yoke orientation model training and compensation angle calculation |
+| **Analysis** | [`defect_classification_tool.py`](tools/analysis/defect_classification_tool.py) | Offline defect classification validation and threshold tuning |
+| | [`lighting_check_analysis.py`](tools/analysis/lighting_check_analysis.py) | CCD #4 light leakage analysis and reporting |
+| | [`ng_statistics.py`](tools/analysis/ng_statistics.py) | NG rate analysis, per-defect statistics, SPC charts |
+| **Simulation** | [`inspection_sequence_sim.py`](tools/simulation/inspection_sequence_sim.py) | Offline simulation of 18-step inspection sequence and timing analysis |
 
 ---
 
