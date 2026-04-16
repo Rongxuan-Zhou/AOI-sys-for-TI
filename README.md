@@ -27,11 +27,18 @@
 ## Machine Overview
 
 <p align="center">
-  <img src="docs/images/pdf_pages/ccd_deployment_specs.png" width="80%" alt="Machine Overview - 3D View with Dimensions"/>
+  <img src="docs/images/pdf_pages/ccd_deployment_specs.png" width="48%" alt="Machine Overview - 3D View with Dimensions"/>
+  <img src="docs/images/pdf_pages/machine_enclosure_exploded.png" width="48%" alt="Machine Overview - Enclosure and Exploded View"/>
 </p>
 
 <p align="center">
-  <em>Complete AOI equipment (1800 x 1600 x 2000 mm): 3D enclosure view with HMI, Tri-Color indicator, optical grating protection, and internal layout.</em>
+  <img src="docs/images/pdf_pages/machine_3d_overview.png" width="70%" alt="Machine Overview - 18 Station Layout"/>
+</p>
+
+<p align="center">
+  <em>Top left: 3D view with dimensions (1800 x 1600 x 2000 mm), HMI, Tri-Color indicator, optical grating.
+  Top right: Enclosure and exploded internal layout.
+  Bottom: All 18 numbered stations -- Loading (1-4), Inspection (5-11), Output (12-16), NG Path (17-18).</em>
 </p>
 
 ---
@@ -183,66 +190,6 @@ flowchart TB
 <p align="center">
   <em>18-step process flow: top-down machine layout (left) with numbered station positions, and corresponding step-by-step flowchart (right) showing OK and NG paths.</em>
 </p>
-
-### Key Process Stages
-
-<table>
-<tr>
-<td width="33%">
-
-<p align="center">
-  <img src="docs/images/pdf_pages/cse_loading_scara.png" width="100%" alt="CSE Loading"/>
-  <br/><em>CSE Loading: Epson SCARA with dual vacuum nozzle, Poka-Yoke CCD orientation check, 90-deg rotation</em>
-</p>
-
-</td>
-<td width="33%">
-
-<p align="center">
-  <img src="docs/images/pdf_pages/lighting_check_chamber_cross_section.png" width="100%" alt="Lighting Check"/>
-  <br/><em>CCD#4 Lighting Check: Closed chamber with hyper light source, sapphire glass substrate, glass cover</em>
-</p>
-
-</td>
-<td width="33%">
-
-<p align="center">
-  <img src="docs/images/pdf_pages/side_check_360rotation.png" width="100%" alt="Side Check"/>
-  <br/><em>CCD#2 Side Check: Gripper lift, 360-deg motor rotation, pin and gold exposal inspection</em>
-</p>
-
-</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td width="33%">
-
-<p align="center">
-  <img src="docs/images/pdf_pages/single_basket_feeding.png" width="100%" alt="Basket Feeding"/>
-  <br/><em>Single Basket Feeding: Cylinder stack hold, L-trigger split, lifter module</em>
-</p>
-
-</td>
-<td width="33%">
-
-<p align="center">
-  <img src="docs/images/pdf_pages/orientation_compensation.png" width="100%" alt="Orientation Compensation"/>
-  <br/><em>Orientation Compensation: Transfer#4 adjusts CSE orientation during transit to side check</em>
-</p>
-
-</td>
-<td width="33%">
-
-<p align="center">
-  <img src="docs/images/pdf_pages/customer_requirement.png" width="100%" alt="CSE Product"/>
-  <br/><em>TI CSE Product: Circular ceramic package with pins (basket) and marking codes (top side)</em>
-</p>
-
-</td>
-</tr>
-</table>
 
 ---
 
