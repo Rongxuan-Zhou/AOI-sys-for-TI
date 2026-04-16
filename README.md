@@ -4,7 +4,7 @@
 
 ### 4-CCD Multi-Angle Automated Optical Inspection
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Platform: Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-3776AB.svg?logo=python&logoColor=white)](https://www.python.org)
 [![Vision: GigE Vision 2.0](https://img.shields.io/badge/Vision-GigE%20Vision%202.0-00979D.svg)](https://www.visiononline.org)
 [![Camera: Hikrobot](https://img.shields.io/badge/Camera-Hikrobot%20MV--GE-green.svg)](https://www.hikrobotics.com)
@@ -267,6 +267,6 @@ Hardware configuration files for each inspection station:
 
 <div align="center">
 
-**MIT License** -- See [LICENSE](LICENSE) for details.
+**Apache License 2.0** -- See [LICENSE](LICENSE) for details.
 
 </div>
