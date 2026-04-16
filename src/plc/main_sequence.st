@@ -261,7 +261,8 @@ CASE CURRENT_STATE OF
            This allows individual access to each unit at vision stations. *)
         IF STATE_ENTRY THEN
             SOL_PITCH_CLAMP := TRUE;
-            AXIS[1].TARGET_POS := 50000;  (* 25mm * 2000 pulses/mm *)
+            (* Axis 1: 4194304 PPR / 10mm lead = 419430 pulses/mm *)
+            AXIS[1].TARGET_POS := REAL_TO_DINT(25.0 * 419430.0);  (* 25mm pitch *)
             AXIS[1].SPEED := 50000;       (* 500 mm/s *)
             AXIS[1].ACCEL := 200000;      (* 2000 mm/s^2 *)
             STEP_TIMER(IN := FALSE, PT := T#0ms);
@@ -279,7 +280,8 @@ CASE CURRENT_STATE OF
             IF ZONE_CLEAR[1] THEN
                 TRANSFER_ACTIVE[1] := TRUE;
                 SOL_TRANSFER_GRIP[1] := TRUE;
-                AXIS[1].TARGET_POS := 200000;  (* 100mm travel *)
+                (* Axis 1: 4194304 PPR / 10mm lead = 419430 pulses/mm *)
+                AXIS[1].TARGET_POS := REAL_TO_DINT(100.0 * 419430.0);  (* 100mm travel *)
                 STEP_TIMER(IN := FALSE, PT := T#0ms);
                 STATE_ENTRY := FALSE;
             END_IF;
@@ -317,7 +319,8 @@ CASE CURRENT_STATE OF
             IF ZONE_CLEAR[2] THEN
                 TRANSFER_ACTIVE[2] := TRUE;
                 SOL_TRANSFER_GRIP[2] := TRUE;
-                AXIS[2].TARGET_POS := 200000;
+                (* Axis 2: 4194304 PPR / 10mm lead = 419430 pulses/mm *)
+                AXIS[2].TARGET_POS := REAL_TO_DINT(100.0 * 419430.0);  (* 100mm travel *)
                 STEP_TIMER(IN := FALSE, PT := T#0ms);
                 STATE_ENTRY := FALSE;
             END_IF;
@@ -351,7 +354,8 @@ CASE CURRENT_STATE OF
             IF ZONE_CLEAR[3] THEN
                 TRANSFER_ACTIVE[3] := TRUE;
                 SOL_TRANSFER_GRIP[3] := TRUE;
-                AXIS[3].TARGET_POS := 200000;
+                (* Axis 3: 4194304 PPR / 10mm lead = 419430 pulses/mm *)
+                AXIS[3].TARGET_POS := REAL_TO_DINT(100.0 * 419430.0);  (* 100mm travel *)
                 STEP_TIMER(IN := FALSE, PT := T#0ms);
                 STATE_ENTRY := FALSE;
             END_IF;
@@ -389,7 +393,8 @@ CASE CURRENT_STATE OF
             IF ZONE_CLEAR[4] THEN
                 TRANSFER_ACTIVE[4] := TRUE;
                 SOL_TRANSFER_GRIP[4] := TRUE;
-                AXIS[4].TARGET_POS := 200000;
+                (* Axis 4: 4194304 PPR / 10mm lead = 419430 pulses/mm *)
+                AXIS[4].TARGET_POS := REAL_TO_DINT(100.0 * 419430.0);  (* 100mm travel *)
                 STEP_TIMER(IN := FALSE, PT := T#0ms);
                 STATE_ENTRY := FALSE;
             END_IF;
@@ -407,8 +412,8 @@ CASE CURRENT_STATE OF
            Compensation ensures CCD2 side B image is rotationally aligned. *)
         IF STATE_ENTRY THEN
             SOL_ORIENT_CLAMP := TRUE;
-            (* Convert degrees to encoder pulses: 1 deg = 1000 pulses *)
-            AXIS[7].TARGET_POS := REAL_TO_DINT(ORIENT_CORRECTION * 1000.0);
+            (* Axis 7: 4194304 PPR * 72:1 harmonic / 360 = 838861 pulses/deg *)
+            AXIS[7].TARGET_POS := REAL_TO_DINT(ORIENT_CORRECTION * 838861.0);
             AXIS[7].SPEED := 36000;     (* 360 deg/s *)
             AXIS[7].ACCEL := 720000;    (* Fast settle for throughput *)
             STEP_TIMER(IN := FALSE, PT := T#0ms);
@@ -448,7 +453,8 @@ CASE CURRENT_STATE OF
             IF ZONE_CLEAR[5] THEN
                 TRANSFER_ACTIVE[5] := TRUE;
                 SOL_TRANSFER_GRIP[5] := TRUE;
-                AXIS[5].TARGET_POS := 200000;
+                (* Axis 5: 4194304 PPR / 10mm lead = 419430 pulses/mm *)
+                AXIS[5].TARGET_POS := REAL_TO_DINT(100.0 * 419430.0);  (* 100mm travel *)
                 STEP_TIMER(IN := FALSE, PT := T#0ms);
                 STATE_ENTRY := FALSE;
             END_IF;

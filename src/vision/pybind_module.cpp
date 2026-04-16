@@ -17,6 +17,8 @@
 #include <pybind11/functional.h>
 #include <pybind11/numpy.h>
 
+#include <memory>
+
 #include <opencv2/core.hpp>
 
 #include "GigEVisionCapture.h"
@@ -57,12 +59,15 @@ py::array mat_to_numpy(const cv::Mat& mat) {
     }
 
     // Clone the Mat data so the NumPy array owns its memory.
-    // For truly zero-copy, the caller must ensure the Mat stays alive.
-    cv::Mat* owned = new cv::Mat(mat.clone());
-    py::capsule release(owned, [](void* p) { delete static_cast<cv::Mat*>(p); });
+    // Use unique_ptr to guarantee cleanup if py::array ctor throws.
+    auto owned = std::make_unique<cv::Mat>(mat.clone());
+    auto* raw = owned.get();
+    py::capsule release(owned.release(), [](void* p) {
+        delete static_cast<cv::Mat*>(p);
+    });
 
     return py::array(py::buffer_info(
-        owned->data, static_cast<ssize_t>(owned->elemSize1()),
+        raw->data, static_cast<ssize_t>(raw->elemSize1()),
         fmt, static_cast<ssize_t>(shape.size()), shape, strides
     ));
 }

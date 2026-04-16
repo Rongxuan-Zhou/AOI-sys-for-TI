@@ -21,7 +21,7 @@ camera:
 lens:
   model: WWK03-110-230
   focal_length_mm: 110
-  magnification: 0.23x
+  magnification: 0.3x
   aperture_range: [f/2.8, f/16]
   mount: C-mount
 

@@ -21,7 +21,7 @@ camera:
 lens:
   model: DTCM110-48
   type: telecentric
-  magnification: 0.48x
+  magnification: 0.535x
   telecentricity_deg: 0.05
   working_distance_mm: 110
   na: 0.04

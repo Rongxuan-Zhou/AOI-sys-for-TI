@@ -182,21 +182,31 @@ cv::Mat ImagePreprocessor::CompensateChromaticAberration(const cv::Mat& image) {
     // Green channel is the reference — it passes through unchanged.
     cv::Mat map_x(image.size(), CV_32F), map_y(image.size(), CV_32F);
 
-    // Remap red channel
-    for (int y = 0; y < image.rows; ++y) {
-        for (int x = 0; x < image.cols; ++x) {
-            map_x.at<float>(y, x) = x + lut_channels[0].at<float>(y, x);
-            map_y.at<float>(y, x) = y + lut_channels[1].at<float>(y, x);
+    // Remap red channel (pointer arithmetic for performance)
+    {
+        const float* lut_dx = lut_channels[0].ptr<float>();
+        const float* lut_dy = lut_channels[1].ptr<float>();
+        float* mx = map_x.ptr<float>();
+        float* my = map_y.ptr<float>();
+        const int total = image.rows * image.cols;
+        for (int i = 0; i < total; ++i) {
+            mx[i] = static_cast<float>(i % image.cols) + lut_dx[i];
+            my[i] = static_cast<float>(i / image.cols) + lut_dy[i];
         }
     }
     cv::remap(bgr[2], bgr[2], map_x, map_y, cv::INTER_LINEAR,
               cv::BORDER_REFLECT_101);
 
-    // Remap blue channel
-    for (int y = 0; y < image.rows; ++y) {
-        for (int x = 0; x < image.cols; ++x) {
-            map_x.at<float>(y, x) = x + lut_channels[2].at<float>(y, x);
-            map_y.at<float>(y, x) = y + lut_channels[3].at<float>(y, x);
+    // Remap blue channel (pointer arithmetic for performance)
+    {
+        const float* lut_dx = lut_channels[2].ptr<float>();
+        const float* lut_dy = lut_channels[3].ptr<float>();
+        float* mx = map_x.ptr<float>();
+        float* my = map_y.ptr<float>();
+        const int total = image.rows * image.cols;
+        for (int i = 0; i < total; ++i) {
+            mx[i] = static_cast<float>(i % image.cols) + lut_dx[i];
+            my[i] = static_cast<float>(i / image.cols) + lut_dy[i];
         }
     }
     cv::remap(bgr[0], bgr[0], map_x, map_y, cv::INTER_LINEAR,
