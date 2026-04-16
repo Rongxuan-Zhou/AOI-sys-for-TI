@@ -1,0 +1,180 @@
+Address,Signal Name,Type,Module,Description
+# ============================================================================
+# AOI System I/O Mapping - CC-Link IE Field Remote I/O
+# Station 1: RJ71GN11-T2 (Master) -> NZ2GN2S-60MBS (Slave modules)
+# ============================================================================
+#
+# --- DIGITAL INPUTS: Part Presence Sensors (Photoeyes) ---
+X000,BASKET_PRESENT,DI,Station1-Slot0,Photoeye at basket infeed magazine
+X001,CSE_LOADER_HOME,DI,Station1-Slot0,Prox sensor - CSE loader at home position
+X002,PITCH_SETTLED,DI,Station1-Slot0,Mechanical lock confirm for pitch change stage
+X003,PART_ON_CCD4,DI,Station1-Slot0,Vacuum sensor - part seated at CCD4 station
+X004,PART_ON_CCD3,DI,Station1-Slot0,Vacuum sensor - part seated at CCD3 station
+X005,PART_ON_CCD1,DI,Station1-Slot0,Vacuum sensor - part seated at CCD1 station
+X006,PART_ON_CCD2,DI,Station1-Slot0,Vacuum sensor - part seated at CCD2 station
+X007,UNLOAD_CHUTE_CLEAR,DI,Station1-Slot0,Photoeye - unload chute not blocked
+#
+# --- DIGITAL INPUTS: Servo Drive Status (via CC-Link IE Field cyclic) ---
+X010,SERVO1_READY,DI,Station2-Slot0,Transfer 1 drive ready (MR-J5-G)
+X011,SERVO1_IN_POS,DI,Station2-Slot0,Transfer 1 in-position complete
+X012,SERVO1_ALARM,DI,Station2-Slot0,Transfer 1 alarm active
+X013,SERVO1_HOME_DONE,DI,Station2-Slot0,Transfer 1 homing complete
+X014,SERVO2_READY,DI,Station2-Slot0,Transfer 2 drive ready
+X015,SERVO2_IN_POS,DI,Station2-Slot0,Transfer 2 in-position complete
+X016,SERVO2_ALARM,DI,Station2-Slot0,Transfer 2 alarm active
+X017,SERVO2_HOME_DONE,DI,Station2-Slot0,Transfer 2 homing complete
+X020,SERVO3_READY,DI,Station2-Slot1,Transfer 3 drive ready
+X021,SERVO3_IN_POS,DI,Station2-Slot1,Transfer 3 in-position complete
+X022,SERVO3_ALARM,DI,Station2-Slot1,Transfer 3 alarm active
+X023,SERVO3_HOME_DONE,DI,Station2-Slot1,Transfer 3 homing complete
+X024,SERVO4_READY,DI,Station2-Slot1,Transfer 4 drive ready
+X025,SERVO4_IN_POS,DI,Station2-Slot1,Transfer 4 in-position complete
+X026,SERVO4_ALARM,DI,Station2-Slot1,Transfer 4 alarm active
+X027,SERVO4_HOME_DONE,DI,Station2-Slot1,Transfer 4 homing complete
+X030,SERVO5_READY,DI,Station3-Slot0,Transfer 5 drive ready
+X031,SERVO5_IN_POS,DI,Station3-Slot0,Transfer 5 in-position complete
+X032,SERVO5_ALARM,DI,Station3-Slot0,Transfer 5 alarm active
+X033,SERVO5_HOME_DONE,DI,Station3-Slot0,Transfer 5 homing complete
+X034,SERVO6_READY,DI,Station3-Slot0,Transfer 6 drive ready
+X035,SERVO6_IN_POS,DI,Station3-Slot0,Transfer 6 in-position complete
+X036,SERVO6_ALARM,DI,Station3-Slot0,Transfer 6 alarm active
+X037,SERVO6_HOME_DONE,DI,Station3-Slot0,Transfer 6 homing complete
+X040,SERVO7_READY,DI,Station3-Slot1,Orientation comp axis ready
+X041,SERVO7_IN_POS,DI,Station3-Slot1,Orientation comp in-position
+X042,SERVO7_ALARM,DI,Station3-Slot1,Orientation comp alarm
+X043,SERVO7_HOME_DONE,DI,Station3-Slot1,Orientation comp homing complete
+X044,SERVO8_READY,DI,Station3-Slot1,Side-check rotation axis ready
+X045,SERVO8_IN_POS,DI,Station3-Slot1,Side-check rotation in-position
+X046,SERVO8_ALARM,DI,Station3-Slot1,Side-check rotation alarm
+X047,SERVO8_HOME_DONE,DI,Station3-Slot1,Side-check rotation homing complete
+#
+# --- DIGITAL INPUTS: Limit Switches & Mechanical Sensors ---
+X050,TRANSFER1_FWD_LIMIT,DI,Station4-Slot0,Transfer 1 forward overtravel limit
+X051,TRANSFER1_REV_LIMIT,DI,Station4-Slot0,Transfer 1 reverse overtravel limit
+X052,TRANSFER2_FWD_LIMIT,DI,Station4-Slot0,Transfer 2 forward overtravel limit
+X053,TRANSFER2_REV_LIMIT,DI,Station4-Slot0,Transfer 2 reverse overtravel limit
+X054,TRANSFER3_FWD_LIMIT,DI,Station4-Slot0,Transfer 3 forward overtravel limit
+X055,TRANSFER3_REV_LIMIT,DI,Station4-Slot0,Transfer 3 reverse overtravel limit
+X056,TRANSFER4_FWD_LIMIT,DI,Station4-Slot0,Transfer 4 forward overtravel limit
+X057,TRANSFER4_REV_LIMIT,DI,Station4-Slot0,Transfer 4 reverse overtravel limit
+X060,TRANSFER5_FWD_LIMIT,DI,Station4-Slot1,Transfer 5 forward overtravel limit
+X061,TRANSFER5_REV_LIMIT,DI,Station4-Slot1,Transfer 5 reverse overtravel limit
+X062,TRANSFER6_FWD_LIMIT,DI,Station4-Slot1,Transfer 6 forward overtravel limit
+X063,TRANSFER6_REV_LIMIT,DI,Station4-Slot1,Transfer 6 reverse overtravel limit
+X064,ORIENT_CW_LIMIT,DI,Station4-Slot1,Orientation axis CW soft limit
+X065,ORIENT_CCW_LIMIT,DI,Station4-Slot1,Orientation axis CCW soft limit
+X066,SIDECHECK_INDEX,DI,Station4-Slot1,Side-check rotation index pulse
+X067,BASKET_MAGAZINE_LOW,DI,Station4-Slot1,Basket magazine low-level sensor
+#
+# --- DIGITAL INPUTS: Pneumatic Cylinder Position Feedback ---
+X070,BASKET_CLAMP_EXTENDED,DI,Station5-Slot0,Basket clamp cylinder extended confirm
+X071,BASKET_CLAMP_RETRACTED,DI,Station5-Slot0,Basket clamp cylinder retracted confirm
+X072,PITCH_CYL_EXTENDED,DI,Station5-Slot0,Pitch change cylinder extended
+X073,PITCH_CYL_RETRACTED,DI,Station5-Slot0,Pitch change cylinder retracted
+X074,CCD4_FLIP_EXTENDED,DI,Station5-Slot0,CCD4 flipper cylinder extended
+X075,CCD4_FLIP_RETRACTED,DI,Station5-Slot0,CCD4 flipper cylinder retracted
+X076,NG_DIVERTER_EXTENDED,DI,Station5-Slot0,NG diverter gate extended
+X077,NG_DIVERTER_RETRACTED,DI,Station5-Slot0,NG diverter gate retracted
+#
+# --- DIGITAL INPUTS: Safety System (Dual-Channel to Safety CPU) ---
+X100,ESTOP1_CH_A,DI,SafetyStation1,E-Stop 1 channel A (main panel)
+X101,ESTOP1_CH_B,DI,SafetyStation1,E-Stop 1 channel B (main panel)
+X102,ESTOP2_CH_A,DI,SafetyStation1,E-Stop 2 channel A (rear panel)
+X103,ESTOP2_CH_B,DI,SafetyStation1,E-Stop 2 channel B (rear panel)
+X104,ESTOP3_CH_A,DI,SafetyStation1,E-Stop 3 channel A (teach pendant)
+X105,ESTOP3_CH_B,DI,SafetyStation1,E-Stop 3 channel B (teach pendant)
+X106,LC_LOAD_OSSD1,DI,SafetyStation1,Load zone light curtain OSSD 1
+X107,LC_LOAD_OSSD2,DI,SafetyStation1,Load zone light curtain OSSD 2
+X110,LC_UNLOAD_OSSD1,DI,SafetyStation2,Unload zone light curtain OSSD 1
+X111,LC_UNLOAD_OSSD2,DI,SafetyStation2,Unload zone light curtain OSSD 2
+X112,DOOR_FRONT_CH_A,DI,SafetyStation2,Front door interlock channel A
+X113,DOOR_FRONT_CH_B,DI,SafetyStation2,Front door interlock channel B
+X114,DOOR_REAR_CH_A,DI,SafetyStation2,Rear door interlock channel A
+X115,DOOR_REAR_CH_B,DI,SafetyStation2,Rear door interlock channel B
+X116,STO_FB1_CH_A,DI,SafetyStation2,STO contactor 1 feedback channel A (NC aux)
+X117,STO_FB1_CH_B,DI,SafetyStation2,STO contactor 1 feedback channel B (NC aux)
+X120,STO_FB2_CH_A,DI,SafetyStation3,STO contactor 2 feedback channel A
+X121,STO_FB2_CH_B,DI,SafetyStation3,STO contactor 2 feedback channel B
+X122,MUTE_SENSOR_1,DI,SafetyStation3,Load zone muting photoeye entry
+X123,MUTE_SENSOR_2,DI,SafetyStation3,Load zone muting photoeye exit
+X124,MUTE_SENSOR_3,DI,SafetyStation3,Unload zone muting photoeye entry
+X125,MUTE_SENSOR_4,DI,SafetyStation3,Unload zone muting photoeye exit
+X126,SAFETY_RESET_PB,DI,SafetyStation3,Safety reset pushbutton (monitored)
+X127,SAFETY_MAT_PRESENT,DI,SafetyStation3,Safety mat - operator standing zone
+#
+# --- DIGITAL INPUTS: Vision / IPC Interface (EtherNet/IP CIP) ---
+X130,VISION_CCD1_RESULT_READY,DI,EIP-CIP,CCD1 result available from IPC
+X131,VISION_CCD1_PASS,DI,EIP-CIP,CCD1 inspection result PASS
+X132,VISION_CCD2_RESULT_READY,DI,EIP-CIP,CCD2 result available from IPC
+X133,VISION_CCD2_PASS,DI,EIP-CIP,CCD2 inspection result PASS
+X134,VISION_CCD3_RESULT_READY,DI,EIP-CIP,CCD3 result available from IPC
+X135,VISION_CCD3_PASS,DI,EIP-CIP,CCD3 inspection result PASS
+X136,VISION_CCD4_RESULT_READY,DI,EIP-CIP,CCD4 result available from IPC
+X137,VISION_CCD4_PASS,DI,EIP-CIP,CCD4 inspection result PASS
+X140,IPC_HEARTBEAT,DI,EIP-CIP,IPC communication watchdog toggle (500ms)
+X141,IPC_ORIENTATION_DATA_VALID,DI,EIP-CIP,IPC orientation correction angle ready
+#
+# --- DIGITAL INPUTS: Operator Panel ---
+X150,PB_CYCLE_START,DI,Station6-Slot0,Cycle start pushbutton (momentary)
+X151,PB_CYCLE_STOP,DI,Station6-Slot0,Cycle stop pushbutton (maintained)
+X152,SW_AUTO_MANUAL,DI,Station6-Slot0,Auto/Manual mode selector switch
+X153,PB_ERROR_RESET,DI,Station6-Slot0,Error reset pushbutton
+X154,PB_HOME_ALL,DI,Station6-Slot0,Home all axes pushbutton
+X155,SW_BYPASS_VISION,DI,Station6-Slot0,Vision bypass key switch (maintenance only)
+#
+# ============================================================================
+# --- DIGITAL OUTPUTS: SMC SY3000 Solenoid Valves (19 total) ---
+# ============================================================================
+Y100,SOL_BASKET_CLAMP,DO,Station1-Slot2,SMC SY3140 - Basket clamp cylinder extend
+Y101,SOL_CSE_VACUUM_1,DO,Station1-Slot2,SMC SY3140 - CSE vacuum generator 1 ON
+Y102,SOL_CSE_VACUUM_2,DO,Station1-Slot2,SMC SY3140 - CSE vacuum generator 2 ON
+Y103,SOL_CSE_VACUUM_3,DO,Station1-Slot2,SMC SY3140 - CSE vacuum generator 3 ON
+Y104,SOL_CSE_VACUUM_4,DO,Station1-Slot2,SMC SY3140 - CSE vacuum generator 4 ON (4-unit batch)
+Y105,SOL_PITCH_CHANGE_CYL,DO,Station1-Slot2,SMC SY3340 - Pitch change cylinder extend
+Y106,SOL_PITCH_CHANGE_LOCK,DO,Station1-Slot2,SMC SY3140 - Pitch position lock pin
+Y107,SOL_CCD4_FLIPPER,DO,Station1-Slot2,SMC SY3340 - CCD4 flip cylinder extend
+Y110,SOL_CCD4_VACUUM,DO,Station1-Slot3,SMC SY3140 - CCD4 station vacuum hold
+Y111,SOL_CCD3_VACUUM,DO,Station1-Slot3,SMC SY3140 - CCD3 station vacuum hold
+Y112,SOL_CCD1_VACUUM,DO,Station1-Slot3,SMC SY3140 - CCD1 station vacuum hold
+Y113,SOL_CCD2_VACUUM,DO,Station1-Slot3,SMC SY3140 - CCD2 station vacuum hold
+Y114,SOL_ORIENT_CLAMP,DO,Station1-Slot3,SMC SY3140 - Orientation lock clamp
+Y115,SOL_NG_DIVERTER,DO,Station1-Slot3,SMC SY3340 - NG diverter gate actuate
+Y116,SOL_UNLOAD_EJECT,DO,Station1-Slot3,SMC SY3340 - Unload ejector cylinder
+Y117,SOL_AIR_BLOW_CLEAN,DO,Station1-Slot3,SMC SY3140 - Air blow lens cleaning
+Y120,SOL_BASKET_LIFT,DO,Station5-Slot1,SMC SY3340 - Basket elevator lift cylinder
+Y121,SOL_BASKET_INDEX,DO,Station5-Slot1,SMC SY3140 - Basket lane index pin
+Y122,SOL_REJECT_BIN_GATE,DO,Station5-Slot1,SMC SY3140 - Reject bin overflow gate
+#
+# --- DIGITAL OUTPUTS: Servo Drive Commands (via CC-Link IE Field cyclic) ---
+Y130,SERVO1_ENABLE,DO,Station2-Slot0,Transfer 1 servo ON command
+Y131,SERVO2_ENABLE,DO,Station2-Slot0,Transfer 2 servo ON command
+Y132,SERVO3_ENABLE,DO,Station2-Slot1,Transfer 3 servo ON command
+Y133,SERVO4_ENABLE,DO,Station2-Slot1,Transfer 4 servo ON command
+Y134,SERVO5_ENABLE,DO,Station3-Slot0,Transfer 5 servo ON command
+Y135,SERVO6_ENABLE,DO,Station3-Slot0,Transfer 6 servo ON command
+Y136,SERVO7_ENABLE,DO,Station3-Slot1,Orientation comp servo ON command
+Y137,SERVO8_ENABLE,DO,Station3-Slot1,Side-check rotation servo ON command
+#
+# --- DIGITAL OUTPUTS: Vision Trigger & Lighting ---
+Y140,VISION_CCD1_TRIGGER,DO,Station6-Slot1,CCD1 camera strobe trigger
+Y141,VISION_CCD2_TRIGGER,DO,Station6-Slot1,CCD2 camera strobe trigger
+Y142,VISION_CCD3_TRIGGER,DO,Station6-Slot1,CCD3 camera strobe trigger
+Y143,VISION_CCD4_TRIGGER,DO,Station6-Slot1,CCD4 camera strobe trigger
+Y144,LIGHT_CCD1_STROBE,DO,Station6-Slot1,CCD1 LED ring light strobe
+Y145,LIGHT_CCD2_STROBE,DO,Station6-Slot1,CCD2 coaxial light strobe
+Y146,LIGHT_CCD3_STROBE,DO,Station6-Slot1,CCD3 bar light array strobe
+Y147,LIGHT_CCD4_STROBE,DO,Station6-Slot1,CCD4 backlight strobe
+#
+# --- DIGITAL OUTPUTS: Indicator & Operator Panel ---
+Y150,LAMP_RUN_GREEN,DO,Station6-Slot2,Tower light green - running
+Y151,LAMP_WARN_AMBER,DO,Station6-Slot2,Tower light amber - warning
+Y152,LAMP_FAULT_RED,DO,Station6-Slot2,Tower light red - fault
+Y153,BUZZER_FAULT,DO,Station6-Slot2,Audible alarm buzzer
+Y154,LAMP_MUTING_LOAD,DO,Station6-Slot2,Muting active indicator - load zone
+Y155,LAMP_MUTING_UNLOAD,DO,Station6-Slot2,Muting active indicator - unload zone
+#
+# --- DIGITAL OUTPUTS: Safety System ---
+Y160,STO_CONTACTOR_1,DO,SafetyStation1,STO contactor axes 1-4 (safety output)
+Y161,STO_CONTACTOR_2,DO,SafetyStation1,STO contactor axes 5-8 (safety output)
+Y162,DOOR_LOCK_FRONT,DO,SafetyStation1,Front door solenoid lock
+Y163,DOOR_LOCK_REAR,DO,SafetyStation1,Rear door solenoid lock
