@@ -1,0 +1,119 @@
+# =============================================================================
+# CCD#4 - Inner / Lighting Functional Check Station
+# AOI System for TI Package Inspection
+# Station: LIGHTING_CHECK
+# Last calibrated: 2025-09-14
+# =============================================================================
+
+station_id: CCD4_LIGHTING
+description: "Functional light-leakage and inner inspection using telecentric optics in sealed dark chamber"
+
+camera:
+  model: MV-GE2000C-T1P-C4
+  interface: GigE Vision
+  sensor_type: CMOS
+  sensor_size_inch: 1
+  pixel_size_um: 3.69
+  max_resolution: [5496, 3672]
+  bit_depth: 12
+  color_mode: color  # color required for stain wavelength discrimination
+
+lens:
+  model: DTCM110-48
+  type: telecentric
+  magnification: 0.48x
+  telecentricity_deg: 0.05
+  working_distance_mm: 110
+  na: 0.04
+  mount: C-mount
+  note: "Telecentric lens eliminates perspective distortion for accurate dimensional measurement"
+
+light_source:
+  model: DN-HSP25-W
+  type: hyper_spot_light
+  wavelength_nm: 6500  # white LED
+  beam_diameter_mm: 25
+  luminous_intensity_cd: 45000
+  driver: strobe
+  controller_channel: 4
+  note: "High-intensity directional spot for penetrating sealed package cavity"
+
+optical_parameters:
+  resolution_mm_per_pixel: 0.0069
+  fov_mm: [37.9, 25.3]
+  working_distance_mm: 140
+  working_distance_tolerance_mm: 3
+  depth_of_field_mm: 0.8
+
+chamber_design:
+  type: closed_chamber
+  substrate: sapphire_glass
+  substrate_thickness_mm: 1.0
+  substrate_transmittance_pct: 92
+  cover: glass_cover
+  cover_thickness_mm: 2.0
+  seal: mechanical_shade
+  seal_actuator: pneumatic
+  seal_close_time_ms: 50
+  purpose: functional_light_leakage_test
+  max_ambient_lux: 0.1
+  internal_surface_finish: matte_black_anodized
+  interlock: optical_sensor
+
+test_sequence:
+  # The DUT is powered to activate internal LEDs, then imaged in total darkness
+  steps:
+    - action: close_shade
+      timeout_ms: 200
+    - action: verify_seal
+      method: ambient_light_check
+      threshold_lux: 0.1
+    - action: power_dut
+      voltage_v: 3.3
+      current_limit_ma: 100
+      settle_time_ms: 50
+    - action: capture_dark_frame
+      exposure_us: 5000
+      note: "Reference frame with DUT off"
+    - action: activate_dut_leds
+      channel: all
+    - action: capture_lit_frame
+      exposure_us: 5000
+    - action: power_off_dut
+    - action: open_shade
+
+acquisition:
+  exposure_us: 5000
+  gain_db: 4.0
+  trigger_mode: software
+  pixel_format: BayerRG8
+  roi:
+    x: 500
+    y: 300
+    width: 4496
+    height: 3072
+
+image_preprocessing:
+  dark_frame_subtraction: true
+  demosaic_method: bilinear
+  white_balance: auto
+  noise_reduction: bilateral
+  bilateral_sigma_color: 50
+  bilateral_sigma_space: 5
+
+defects_detected:
+  - lighting_check
+  - staining_residue
+
+inspection_thresholds:
+  lighting_check:
+    method: differential_analysis
+    min_brightness_cd_m2: 12.0
+    uniformity_threshold_pct: 70
+    dead_pixel_cluster_max: 3
+    leakage_threshold_lux: 0.5
+    severity: critical
+  staining_residue:
+    min_area_mm2: 0.005
+    color_deviation_delta_e: 8.0
+    severity: major

@@ -1,0 +1,111 @@
+# =============================================================================
+# CCD#2 - Side Inspection & Pin Check Station
+# AOI System for TI Package Inspection
+# Station: SIDE_CHECK
+# Last calibrated: 2025-09-12
+# =============================================================================
+
+station_id: CCD2_SIDE
+description: "Side-view inspection with 360-degree rotation for pin and lead frame defects"
+
+camera:
+  model: MV-GE501GC
+  interface: GigE Vision
+  sensor_type: CMOS
+  sensor_size_inch: 2/3
+  pixel_size_um: 3.45
+  max_resolution: [2448, 2048]
+  bit_depth: 12
+  color_mode: mono
+
+lens:
+  model: WWK03-110-230
+  focal_length_mm: 110
+  magnification: 0.23x
+  aperture_range: [f/2.8, f/16]
+  mount: C-mount
+
+light_source:
+  model: DN-2BS32738-W
+  type: bar_light
+  wavelength_nm: 6500  # white LED
+  dimensions_mm: [327, 38]
+  mounting: dual_opposing  # two bars on opposite sides for even illumination
+  driver: constant_current
+  controller_channel: 2
+
+optical_parameters:
+  resolution_mm_per_pixel: 0.0115
+  fov_mm: [28, 24]
+  working_distance_mm: 110
+  working_distance_tolerance_mm: 2
+  depth_of_field_mm: 1.2
+
+acquisition:
+  exposure_us: 600
+  gain_db: 3.0
+  trigger_mode: hardware
+  trigger_source: line0
+  trigger_edge: rising
+  frame_rate_max_fps: 23
+  pixel_format: Mono8
+  roi:
+    x: 200
+    y: 100
+    width: 2048
+    height: 1848
+
+rotation_stage:
+  enabled: true
+  rotation_range_deg: 360
+  motor_type: servo
+  motor_model: AKM-33H
+  encoder_resolution_counts_per_rev: 131072
+  frames_per_rotation: 36        # 10-degree increments
+  angular_step_deg: 10.0
+  settling_time_ms: 15
+  positional_accuracy_deg: 0.02
+  homing_method: index_pulse
+  sync_mode: position_trigger    # camera triggered at each angular position
+
+image_preprocessing:
+  flat_field_correction: true
+  flat_field_ref: "calibration/ccd2_flatfield_20250912.tiff"
+  edge_enhancement: true
+  edge_kernel: sobel
+  noise_reduction: median
+  noise_kernel_size: 3
+
+defects_detected:
+  - pin_bent
+  - pin_oxidized
+  - pin_bur
+  - pin_mis_cut
+  - gold_exposal
+
+inspection_thresholds:
+  pin_bent:
+    max_deviation_mm: 0.08
+    reference_model: "models/pin_template_qfp48.json"
+    severity: critical
+  pin_oxidized:
+    min_area_mm2: 0.005
+    color_deviation_threshold: 40
+    severity: major
+  pin_bur:
+    min_protrusion_mm: 0.02
+    severity: major
+  pin_mis_cut:
+    length_tolerance_mm: 0.10
+    width_tolerance_mm: 0.05
+    severity: critical
+  gold_exposal:
+    min_area_mm2: 0.01
+    reflectance_threshold: 180
+    severity: major
+
+multi_view_stitching:
+  enabled: true
+  overlap_deg: 2.0
+  registration_method: feature_based
+  output_format: cylindrical_unwrap

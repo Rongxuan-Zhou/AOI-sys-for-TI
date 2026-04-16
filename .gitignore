@@ -1,0 +1,77 @@
+# =============================================================================
+# .gitignore - AOI System for TI Package Inspection
+# =============================================================================
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.pyc
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+*.egg-info/
+.eggs/
+sdist/
+wheels/
+pip-wheel-metadata/
+*.manifest
+*.spec
+
+# ---------- Virtual Environments ----------
+.env
+.venv
+env/
+venv/
+ENV/
+
+# ---------- IDE / Editor ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Logs ----------
+*.log
+logs/
+
+# ---------- Backup ----------
+*.bak
+*.bak.*
+*.orig
+
+# ---------- AOI System Specific ----------
+# Calibration data (generated per-machine, not portable)
+calibration_data/
+
+# Test images (large binary files, use LFS or external storage)
+test_images/
+
+# Model weights (tracked separately or via DVC)
+models/*.onnx
+models/*.engine
+models/*.trt
+models/*.pt
+!models/*.json
+
+# Runtime artifacts
+results/
+reports/
+temp/
+*.hdf5
+
+# Hardware config overrides (machine-specific)
+config/local_overrides/

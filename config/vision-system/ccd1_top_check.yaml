@@ -1,0 +1,106 @@
+# =============================================================================
+# CCD#1 - Top Side Inspection Station
+# AOI System for TI Package Inspection
+# Station: TOP_CHECK
+# Last calibrated: 2025-09-12
+# =============================================================================
+
+station_id: CCD1_TOP
+description: "Top-side visual inspection for package surface defects and marking quality"
+
+camera:
+  model: MV-GE501GC
+  interface: GigE Vision
+  sensor_type: CMOS
+  sensor_size_inch: 2/3
+  pixel_size_um: 3.45
+  max_resolution: [2448, 2048]
+  bit_depth: 12
+  color_mode: mono
+
+lens:
+  model: WWK03-110-230
+  focal_length_mm: 110
+  magnification: 0.23x
+  aperture_range: [f/2.8, f/16]
+  mount: C-mount
+
+light_source:
+  model: DN-COS60-W
+  type: coaxial
+  wavelength_nm: 6500  # white LED, 6500K color temperature
+  diameter_mm: 60
+  driver: constant_current
+  controller_channel: 1
+
+optical_parameters:
+  resolution_mm_per_pixel: 0.0115
+  fov_mm: [28, 24]
+  working_distance_mm: 110
+  working_distance_tolerance_mm: 2
+  depth_of_field_mm: 1.2
+
+acquisition:
+  exposure_us: 800
+  gain_db: 2.0
+  trigger_mode: hardware
+  trigger_source: line0
+  trigger_edge: rising
+  frame_rate_max_fps: 23
+  pixel_format: Mono8
+  roi:
+    x: 0
+    y: 0
+    width: 2448
+    height: 2048
+
+image_preprocessing:
+  flat_field_correction: true
+  flat_field_ref: "calibration/ccd1_flatfield_20250912.tiff"
+  white_balance: false
+  noise_reduction: gaussian
+  noise_kernel_size: 3
+
+defects_detected:
+  - crack
+  - broken
+  - epoxy_exposal
+  - insufficient_epoxy
+  - dyeing_contamination
+  - non_electrical_contamination
+  - no_code
+  - code_blur
+  - misalignment
+
+inspection_thresholds:
+  crack:
+    min_length_mm: 0.05
+    min_width_mm: 0.01
+    severity: critical
+  broken:
+    min_area_mm2: 0.1
+    severity: critical
+  epoxy_exposal:
+    min_area_mm2: 0.02
+    severity: major
+  insufficient_epoxy:
+    coverage_threshold_pct: 85
+    severity: major
+  dyeing_contamination:
+    min_area_mm2: 0.01
+    contrast_threshold: 30
+    severity: minor
+  non_electrical_contamination:
+    min_area_mm2: 0.01
+    severity: minor
+  no_code:
+    ocr_confidence_threshold: 0.3
+    severity: critical
+  code_blur:
+    sharpness_threshold: 50
+    ocr_confidence_threshold: 0.7
+    severity: major
+  misalignment:
+    max_offset_mm: 0.15
+    max_rotation_deg: 2.0
+    severity: major

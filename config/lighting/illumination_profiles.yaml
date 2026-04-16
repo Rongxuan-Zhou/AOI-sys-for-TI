@@ -1,0 +1,202 @@
+# =============================================================================
+# Illumination Profiles - All AOI Stations
+# AOI System for TI Package Inspection
+# Controller: Gardasoft RT820F-20 (4-channel LED driver)
+# Protocol: RS-232 @ 115200 baud
+# Last updated: 2025-09-14
+# =============================================================================
+
+controller:
+  model: Gardasoft RT820F-20
+  channels: 4
+  max_current_per_channel_ma: 2000
+  protocol: RS232
+  baud_rate: 115200
+  port: /dev/ttyUSB0
+  address: 1
+
+# ---------------------------------------------------------------------------
+# CCD#1 - Top Check (Coaxial)
+# ---------------------------------------------------------------------------
+ccd1_top:
+  channel: 1
+  light_model: DN-COS60-W
+  light_type: coaxial
+  wavelength: white_6500K
+  spectral_range_nm: [400, 700]
+
+  profiles:
+    standard:
+      description: "Default inspection - epoxy, marking, contamination"
+      power_pct: 65
+      mode: strobe
+      strobe_duration_us: 800
+      strobe_delay_us: 10
+      current_ma: 1300
+
+    high_contrast:
+      description: "Enhanced contrast for crack and micro-fracture detection"
+      power_pct: 85
+      mode: strobe
+      strobe_duration_us: 600
+      strobe_delay_us: 10
+      current_ma: 1700
+
+    low_angle:
+      description: "Reduced intensity for marking OCR to avoid specular washout"
+      power_pct: 40
+      mode: strobe
+      strobe_duration_us: 1000
+      strobe_delay_us: 10
+      current_ma: 800
+
+  thermal_protection:
+    max_duty_cycle_pct: 30
+    cooldown_period_ms: 50
+    over_temp_threshold_c: 65
+
+# ---------------------------------------------------------------------------
+# CCD#2 - Side Check (Bar Light)
+# ---------------------------------------------------------------------------
+ccd2_side:
+  channel: 2
+  light_model: DN-2BS32738-W
+  light_type: bar_light
+  wavelength: white_6500K
+  spectral_range_nm: [400, 700]
+  mounting_angle_deg: 45      # angled to graze pin surfaces
+
+  profiles:
+    standard:
+      description: "Default side illumination for pin geometry inspection"
+      power_pct: 70
+      mode: strobe
+      strobe_duration_us: 600
+      strobe_delay_us: 5
+      current_ma: 1400
+
+    grazing:
+      description: "Low-angle grazing light to highlight pin burs and surface texture"
+      power_pct: 90
+      mode: strobe
+      strobe_duration_us: 400
+      strobe_delay_us: 5
+      current_ma: 1800
+      note: "Use with bar lights repositioned to 15-degree incidence"
+
+    oxidation_detect:
+      description: "Moderate intensity to detect oxidation discoloration on pin surfaces"
+      power_pct: 55
+      mode: strobe
+      strobe_duration_us: 800
+      strobe_delay_us: 5
+      current_ma: 1100
+
+  rotation_sync:
+    trigger_offset_us: 200    # delay after motor settle before strobe
+    blanking_during_move: true
+
+  thermal_protection:
+    max_duty_cycle_pct: 25
+    cooldown_period_ms: 60
+    over_temp_threshold_c: 70
+
+# ---------------------------------------------------------------------------
+# CCD#3 - Bottom Check (Coaxial)
+# ---------------------------------------------------------------------------
+ccd3_bottom:
+  channel: 3
+  light_model: DN-COS60-W
+  light_type: coaxial
+  wavelength: white_6500K
+  spectral_range_nm: [400, 700]
+
+  profiles:
+    standard:
+      description: "Default bottom-up inspection for epoxy and edge staining"
+      power_pct: 75
+      mode: strobe
+      strobe_duration_us: 900
+      strobe_delay_us: 10
+      current_ma: 1500
+
+    epoxy_enhanced:
+      description: "Higher intensity for detecting thin epoxy films and overflow"
+      power_pct: 90
+      mode: strobe
+      strobe_duration_us: 700
+      strobe_delay_us: 10
+      current_ma: 1800
+
+    edge_inspection:
+      description: "Optimized for edge staining with moderate even illumination"
+      power_pct: 60
+      mode: strobe
+      strobe_duration_us: 1000
+      strobe_delay_us: 10
+      current_ma: 1200
+
+  ambient_rejection:
+    dark_enclosure_required: true
+    max_ambient_contribution_pct: 0.5
+
+  thermal_protection:
+    max_duty_cycle_pct: 30
+    cooldown_period_ms: 50
+    over_temp_threshold_c: 65
+
+# ---------------------------------------------------------------------------
+# CCD#4 - Lighting / Functional Check (Hyper Spot)
+# ---------------------------------------------------------------------------
+ccd4_lighting:
+  channel: 4
+  light_model: DN-HSP25-W
+  light_type: hyper_spot_light
+  wavelength: white_6500K
+  spectral_range_nm: [380, 720]
+  beam_angle_deg: 8
+
+  profiles:
+    cavity_inspection:
+      description: "Spot illumination into package cavity for staining residue detection"
+      power_pct: 80
+      mode: strobe
+      strobe_duration_us: 2000
+      strobe_delay_us: 20
+      current_ma: 1600
+
+    leakage_test_off:
+      description: "All external lights OFF; only DUT internal LEDs active"
+      power_pct: 0
+      mode: off
+      strobe_duration_us: 0
+      strobe_delay_us: 0
+      current_ma: 0
+      note: "Dark reference - external illumination must be completely off during functional test"
+
+    staining_enhanced:
+      description: "High-intensity directional spot for revealing faint residue stains"
+      power_pct: 95
+      mode: strobe
+      strobe_duration_us: 3000
+      strobe_delay_us: 20
+      current_ma: 1900
+
+  chamber_interlock:
+    shade_must_be_closed: true
+    verify_seal_before_strobe: true
+
+  thermal_protection:
+    max_duty_cycle_pct: 15
+    cooldown_period_ms: 100
+    over_temp_threshold_c: 60
+
+# ---------------------------------------------------------------------------
+# Global Settings
+# ---------------------------------------------------------------------------
+global:
+  power_on_delay_ms: 500
+  calibration_interval_hours: 168    # weekly
+  intensity_drift_tolerance_pct: 5
+  emergency_shutoff: true
+  watchdog_timeout_ms: 2000
