@@ -230,6 +230,6 @@ Vision system and illumination configuration for each inspection station:
 
 <div align="center">
 
-**Author: Rongxuan Zhou** -- Sole Engineer at Dinnar Automation
+**MIT License** -- See [LICENSE](LICENSE) for details.
 
 </div>
