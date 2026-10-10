@@ -337,8 +337,67 @@ std::vector<DefectResult> DefectDetector::DetectMisalignment(const CseGeometry& 
     }
     return out;
 }
-std::vector<DefectResult> DefectDetector::DetectContamination(const cv::Mat&, const CseGeometry&,
-                                                              const cv::Mat&, CameraID) { return {}; }
+// ---------------------------------------------------------------------------
+// Contamination — blobs that differ from the ceramic, classified by colour and
+// texture (slides 36, 39, 40):
+//   dyeing          saturated colour stain
+//   electrical      dark metallic textured streak
+//   non-electrical  everything else (light smudge)
+// ---------------------------------------------------------------------------
+std::vector<DefectResult> DefectDetector::DetectContamination(const cv::Mat& bgr, const CseGeometry& g,
+                                                              const cv::Mat& exclude_mask, CameraID cam) {
+    std::vector<DefectResult> out;
+    cv::Mat roi = locator_.InteriorMask(g);
+    if (roi.empty()) return out;
+    if (!exclude_mask.empty()) {
+        cv::Mat not_excl;
+        cv::bitwise_not(exclude_mask, not_excl);
+        cv::bitwise_and(roi, not_excl, roi);
+    }
+
+    cv::Mat gray, hsv, S;
+    cv::cvtColor(bgr, gray, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(bgr, hsv, cv::COLOR_BGR2HSV);
+    cv::extractChannel(hsv, S, 1);
+
+    cv::Mat local_dark, saturated, cand;
+    cv::adaptiveThreshold(gray, local_dark, 255, cv::ADAPTIVE_THRESH_GAUSSIAN_C,
+                          cv::THRESH_BINARY_INV, 31, 12);
+    cv::threshold(S, saturated, params_.dyeing_sat_min, 255, cv::THRESH_BINARY);
+    cv::bitwise_or(local_dark, saturated, cand);
+    cv::bitwise_and(cand, roi, cand);
+    cv::Mat k5 = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
+    cv::morphologyEx(cand, cand, cv::MORPH_CLOSE, k5);
+
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(cand, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    for (const auto& c : contours) {
+        double area = cv::contourArea(c);
+        if (area < params_.contam_area_min_px) continue;
+
+        cv::Mat blob = cv::Mat::zeros(bgr.size(), CV_8U);
+        cv::drawContours(blob, std::vector<std::vector<cv::Point>>{c}, 0, cv::Scalar(255), cv::FILLED);
+        cv::Scalar mu_g, sd_g;
+        cv::meanStdDev(gray, mu_g, sd_g, blob);
+        double mean_s = cv::mean(S, blob)[0];
+
+        DefectType type;
+        if (mean_s >= params_.dyeing_sat_min) {
+            type = DefectType::DYEING_CONTAMINATION;
+        } else if (mu_g[0] <= params_.electrical_dark_max &&
+                   sd_g[0] >= params_.electrical_texture_min) {
+            type = DefectType::ELECTRICAL_CONTAMINATION;
+        } else {
+            type = DefectType::NON_ELECTRICAL_CONTAMINATION;
+        }
+        float conf = static_cast<float>(area / (10.0 * params_.contam_area_min_px));
+        out.push_back(Make(type, conf, cv::boundingRect(c), cam,
+                           "area " + std::to_string(static_cast<int>(area)) + " px, mean grey " +
+                               std::to_string(static_cast<int>(mu_g[0])) + ", sat " +
+                               std::to_string(static_cast<int>(mean_s))));
+    }
+    return out;
+}
 // ---------------------------------------------------------------------------
 // Top-side pins and their epoxy (slides 35, 38, 44)
 //   hole  = dark, low-saturation circular blob of the expected radius
