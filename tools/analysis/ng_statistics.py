@@ -25,14 +25,14 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Dict, List, Optional
 
-from src.data_types.defect_types import (
+from tools.analysis.defect_types import (
     CameraID,
     DefectDetail,
     DefectSeverity,
     DefectType,
     InspectionResult,
 )
-from src.global_variables.system_config import NG_TRAY_CAPACITY, THRESHOLDS
+from tools.analysis.system_config import NG_TRAY_CAPACITY, THRESHOLDS
 
 logger = logging.getLogger(__name__)
 
@@ -183,7 +183,7 @@ class NGSorter:
 
     def get_ng_rate_by_severity(self) -> Dict[DefectSeverity, int]:
         """Aggregate NG counts by severity tier."""
-        from src.data_types.defect_types import DEFECT_SEVERITY_MAP
+        from tools.analysis.defect_types import DEFECT_SEVERITY_MAP
         severity_counts: Dict[DefectSeverity, int] = defaultdict(int)
         for defect_type, count in self._stats.items():
             sev = DEFECT_SEVERITY_MAP.get(defect_type, DefectSeverity.ASSEMBLY)

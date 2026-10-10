@@ -27,7 +27,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
 
-from src.global_variables.system_config import (
+from tools.analysis.system_config import (
     ROBOT_TCP_IP,
     ROBOT_TCP_PORT,
     ROBOT_VACUUM_PRESSURE_KPA,

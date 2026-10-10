@@ -9,7 +9,7 @@
 
 ## 1. Vision System Overview
 
-The AOI system employs a 4-CCD machine vision architecture using Hikrobot industrial cameras. Three cameras (CCD#1, CCD#2, CCD#3) share identical sensor/lens configurations for top, side, and bottom surface inspection. The fourth camera (CCD#4) uses a higher-resolution sensor with a telecentric lens for the functional lighting check in a sealed dark chamber. Together, the four cameras provide 100% coverage of all inspectable surfaces and the functional light-leakage test.
+The AOI system employs a 4-station machine vision architecture using Hikrobot industrial cameras. Every inspection station carries four cameras, one per CSE of the 4-unit batch (spec slide 10: "MV-GE501GC * 4", "MV-GE2000C-T1P-C*4"), so one trigger per station images the whole batch. Three stations (CCD#1, CCD#2, CCD#3) share identical sensor/lens configurations for top, side, and bottom surface inspection. The fourth station (CCD#4) uses a higher-resolution sensor with a telecentric lens for the functional lighting check in a sealed dark chamber. Together, the four cameras provide 100% coverage of all inspectable surfaces and the functional light-leakage test.
 
 ---
 
@@ -42,9 +42,10 @@ Mounting:     Vertical, looking downward onto top surface
 ```
 
 **Defects Detected:**
-- **Top side surface defects** -- Scratches, contamination, staining, discoloration on the top ceramic or metal lid surface
-- **Marking codes** -- Missing marking (No code), blurred or illegible marking (Code blur), incorrect marking
-- **Misalignment** -- CSE package body misalignment relative to expected position (critical defect)
+- **Crack / Broken / Misalignment** -- ceramic defects shared with CCD#3; misalignment against the calibrated fixture centre
+- **Pin missing, insufficient epoxy, epoxy overflow, epoxy exposal** -- the pins and their epoxy rings are on the top side (slide 9)
+- **Contamination** -- dyeing (saturated colour), electrical (dark textured), non-electrical (light smudge)
+- **Marking code** -- No code, Code blur; the code ROI follows the key notch so inverted parts are read correctly
 
 **Illumination Strategy:**  
 The DN-COS60-W coaxial light provides uniform, shadow-free illumination perpendicular to the top surface. Coaxial illumination is specifically chosen for flat, reflective surfaces (ceramic/metal lids) because it eliminates specular angle-dependent artifacts and provides consistent contrast for both surface defect detection and printed code reading. The coaxial geometry ensures that light reflected from the flat surface returns directly to the camera, while surface irregularities (scratches, contamination) scatter light away, creating high-contrast defect signatures.
@@ -62,11 +63,12 @@ Rotation:     360-degree motor rotation of CSE unit during capture
 ```
 
 **Defects Detected:**
-- **Pin bent** -- Lead pins deformed outside coplanarity tolerance
-- **Pin oxidized** -- Discoloration or oxidation on lead pin surfaces
-- **Pin bur** -- Burrs or excess material on pin edges (requires real production samples for validation)
-- **Pin mis-cut** -- Pins cut to incorrect length or with irregular trim profiles (requires real production samples for validation)
-- **Gold exposure** -- Exposed gold bonding wire or pad visible from side view where it should be encapsulated
+- **Pin bent** -- line-fit angle from vertical beyond tolerance; pins point up in the machine orientation (`pins_up`)
+- **Pin oxidized** -- pin dull/dark instead of bright gold
+- **Pin bur** -- tip wider than the pin body (provisional: no real sample)
+- **Pin mis-cut** -- pin length outside tolerance (provisional: no real sample)
+- **Gold exposal** -- gold/brown patch on the white ceramic side wall (slide 37)
+- **Epoxy higher than ceramic** -- bump in the body's top-edge profile
 
 **Illumination Strategy:**  
 The DN-2BS32738-W dual bar light is positioned to provide grazing-angle illumination along the pin row. Bar lights produce directional illumination that emphasizes three-dimensional features such as bent pins (which cast shadows at different angles than straight pins), burrs (which create bright spots from specular reflection at irregular facets), and oxidation (which alters surface reflectivity). The dual-bar configuration illuminates from two opposing angles to ensure all pin surfaces are visible regardless of rotation angle.
@@ -90,10 +92,10 @@ Timing:       Captures during Transfer #2 motion (pipelined)
 ```
 
 **Defects Detected:**
-- **Bottom surface defects** -- Scratches, marks, contamination on the bottom ceramic surface
-- **Epoxy issues** -- Epoxy exposure (adhesive visible where it should not be), insufficient epoxy coverage, epoxy higher than ceramic edge
-- **Cracks** -- Hairline or visible cracks in the ceramic substrate (critical defect)
-- **Broken** -- Chipped or fractured ceramic body (critical defect)
+- **Crack** -- thin dark elongated structure inside the disc (critical)
+- **Broken** -- rim chip; the key notch is exempt by angle (critical)
+- **Misalignment** -- disc centre vs the calibrated fixture centre (critical)
+- **Contamination** -- electrical / non-electrical / dyeing, with the amber epoxy region masked as structure
 
 **Illumination Strategy:**  
 Identical to CCD#1, the DN-COS60-W coaxial light provides uniform bottom-surface illumination. The upward-facing camera captures the bottom surface as the unit passes overhead during Transfer #2, which is the key cycle-time optimization -- bottom inspection happens during transfer, not as a separate stopped step. The coaxial geometry is essential for detecting cracks, which appear as dark lines on the otherwise uniformly bright ceramic surface.
@@ -114,7 +116,10 @@ Chamber:      Sapphire glass substrate + glass cover, mechanical shade
 ```
 
 **Defects Detected:**
-- **Light leakage** -- Functional test, not cosmetic. Detects any path through the CSE glass structure where light leaks through unintended locations.
+- **Lighting check** -- compact bright spot above the per-radius ring-median baseline of the transmitted-light annulus; colour independent (amber / green / blue thick samples, slide 31) (critical)
+- **Staining on edge** -- compact dark patch in the outer annulus band (inner staining residue)
+- **Yellow glass cement** -- yellow blob more saturated or brighter than its ring (inner staining residue)
+- **Misalignment** -- lit disc centre vs the dark nest ring (slide 45) (critical)
 
 **Why This CCD is Different:**
 

@@ -102,18 +102,46 @@ image_preprocessing:
   bilateral_sigma_space: 5
 
 defects_detected:
+  # spec V1.4 slide 8 ("Inner Staining Residue" sub-table) and slide 45
   - lighting_check
-  - staining_residue
+  - staining_on_edge
+  - yellow_glass_cement
+  - misalignment                        # disc centre vs the nest ring (slide 45)
 
+thickness_classes: [amber, green, blue] # slide 31: thick samples look green or blue; reported only
+
+# Keys mirror aoi::LightingParams (src/vision/LightingCheck.h), production scale
+# (5472 x 3648, 0.0069 mm/px).
 inspection_thresholds:
+  baseline_mode: ring_percentile        # per-radius percentile of the unwrapped annulus (only mode implemented)
+  baseline_percentile: 0.75             # survives up to ~75 % dark structure per ring (slide 30)
+  inner_zone_ratio: 0.40
+  outer_zone_ratio: 0.98
+  edge_band_ratio: 0.85
+  unwrap_w: 2880
+  unwrap_h: 320
   lighting_check:
-    method: differential_analysis
-    min_brightness_cd_m2: 12.0
-    uniformity_threshold_pct: 70
-    dead_pixel_cluster_max: 3
-    leakage_threshold_lux: 0.5
+    leak_residual_min: 45
+    leak_area_min_px: 320
+    blob_aspect_max: 4.0
     severity: critical
-  staining_residue:
-    min_area_mm2: 0.005
-    color_deviation_delta_e: 8.0
-    severity: major
+  staining_on_edge:
+    stain_residual_min: 45
+    stain_area_min_px: 480
+    stain_area_max_px: 12000
+    severity: minor
+  yellow_glass_cement:
+    cement_hue_low: 20
+    cement_hue_high: 40
+    cement_sat_delta: 40
+    cement_val_delta: 30
+    cement_area_min_px: 480
+    severity: minor
+  misalignment:
+    nest_ring_enabled: true
+    nest_val_min: 25
+    mm_per_px: 0.0069
+    misalign_max_offset_mm: 0.15
+    severity: critical
+  min_lit_radius_px: 400
+  min_otsu_thresh: 30

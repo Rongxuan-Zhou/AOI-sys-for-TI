@@ -111,12 +111,12 @@ This project implements the complete vision inspection and material handling con
 
 | Group | Defects | CCD |
 |:------|:--------|:----|
-| **Function (8)** | Lighting Check, Crack\*, Broken\*, Epoxy Exposal, Pin Missing, Electrical Contamination, Gold Exposal, Insufficient Epoxy | #1, #2, #3, #4 |
-| **Cosmetic (4)** | Dyeing Contamination, Non-Electrical Contamination, No Code, Code Blur | #1 |
-| **Assembly (5)** | Pin Bent\*, Pin Oxidized, Pin Bur\*, Pin Mis-cut, Epoxy Higher Than Ceramic | #1, #2 |
-| **Alignment (2)** | Misalignment\*, Staining on Edge | #4 |
+| **Function (9)** | Lighting Check\*, Crack\*, Broken\*, Epoxy Exposal, Pin Missing, Electrical Contamination, Gold Exposal, Insufficient Epoxy, Epoxy Overflow | #4, #1, #3, #2 |
+| **Cosmetic (4)** | Dyeing Contamination, Non-Electrical Contamination, No Code, Code Blur | #1, #3 |
+| **Assembly (6)** | Pin Bent, Pin Oxidized, Pin Bur, Pin Mis-cut, Epoxy Higher Than Ceramic, Misalignment\* | #2, #1, #3, #4 |
+| **Inner staining residue (2)** | Staining on Edge, Yellow Glass Cement -- sub-checks of the lighting check | #4 |
 
-\* = Critical defect (zero tolerance, immediate reject)
+\* = Critical defect (purple on the V1.4 testing report, zero tolerance). Grouping and order follow spec slide 8; every inspection station carries 4 cameras (slide 10).
 
 ---
 
@@ -224,13 +224,17 @@ Detailed technical documentation covering every subsystem:
 |:-------|:-----|:------------|
 | **Vision (C++)** | [`GigEVisionCapture.cpp`](src/vision/GigEVisionCapture.cpp) | GigE Vision 2.0 acquisition, HW trigger, Jumbo Frame, lock-free ring buffer |
 | | [`ImagePreprocessor.cpp`](src/vision/ImagePreprocessor.cpp) | Bayer demosaic, CLAHE, flat-field correction, sapphire glass compensation, cylindrical unwrap |
-| | [`DefectDetector.cpp`](src/vision/DefectDetector.cpp) | 19-category detection engine: template matching, blob analysis, pin geometry, code OCR |
+| | [`CseLocator.cpp`](src/vision/CseLocator.cpp) | Disc fit (two-pass LSQ), key-notch angle, interior mask, polar unwrap -- shared by every station |
+| | [`LightingCheck.cpp`](src/vision/LightingCheck.cpp) | CCD#4 inner check: ring-median baseline, leakage / edge staining / yellow glass cement, nest alignment, thickness class |
+| | [`DefectDetector.cpp`](src/vision/DefectDetector.cpp) | 19-category detection engine routed per station (spec slide 9): rim chips, cracks, pins and epoxy rings, contamination classes, marking code, side-view pin geometry |
+| | [`tests/`](src/vision/tests) | GoogleTest suite on synthetic CSE images (`cmake -DAOI_WITH_MVS=OFF -DAOI_BUILD_TESTS=ON`) |
 | | [`pybind_module.cpp`](src/vision/pybind_module.cpp) | pybind11 bindings for offline analysis tools |
 | | [`CMakeLists.txt`](src/vision/CMakeLists.txt) | Build config: OpenCV 4.x, Hikrobot MVS SDK, pybind11 |
-| **PLC (ST)** | [`main_sequence.st`](src/plc/main_sequence.st) | 18-step inspection state machine, CC-Link IE Field cyclic I/O, vision trigger handshake |
+| **PLC (ST)** | [`main_sequence.st`](src/plc/main_sequence.st) | State machine on the 18-step process flow (slide 15): basket feeding, Poka-Yoke + SCARA handshake, pitch change + 180-degree flip, shade / lighting check, CCD#3 on the fly, CCD#1 reach-out, 4 theta units, 36-frame side sweep, tray / NG sorting, NG reconfirm |
 | | [`safety_program.st`](src/plc/safety_program.st) | ISO 13849-1 PLd Cat.3 safety logic, E-Stop, light curtain, STO |
-| | [`servo_config.st`](src/plc/servo_config.st) | 8-axis servo profiles, homing sequences, CC-Link IE Field drive mapping |
-| | [`io_mapping.csv`](src/plc/io_mapping.csv) | I/O allocation table: 128 DI + 48 DO |
+| | [`servo_config.st`](src/plc/servo_config.st) | 15-axis servo profiles (6 transfers, 4 theta units, 4 side rotators, pitch e-cylinder), homing sequences, CC-Link IE Field drive mapping |
+| | [`io_mapping.csv`](src/plc/io_mapping.csv) | I/O allocation table incl. basket feeder, robot handshake, chamber shade, nests, tray loader/stacker, NG belt |
+| | [`tools/plc/st_lint.py`](tools/plc/st_lint.py) | Structural lint for the ST sources (block pairs, unhandled states, ST_ERROR output resets) |
 
 ### Offline Tools
 

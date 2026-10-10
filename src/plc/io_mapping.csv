@@ -178,3 +178,112 @@ Y160,STO_CONTACTOR_1,DO,SafetyStation1,STO contactor axes 1-4 (safety output)
 Y161,STO_CONTACTOR_2,DO,SafetyStation1,STO contactor axes 5-8 (safety output)
 Y162,DOOR_LOCK_FRONT,DO,SafetyStation1,Front door solenoid lock
 Y163,DOOR_LOCK_REAR,DO,SafetyStation1,Rear door solenoid lock
+#
+# ============================================================================
+# --- V1.4 PROCESS FLOW ADDITIONS (spec slides 16-29) ---
+# ============================================================================
+#
+# --- DIGITAL INPUTS: Single Basket Feeding (slide 16-17) ---
+X200,LIFTER_UP,DI,Station7-Slot0,Basket lifter at top position
+X201,LIFTER_DOWN,DI,Station7-Slot0,Basket lifter at bottom position
+X202,BASKET_AT_HOLDER,DI,Station7-Slot0,Basket seated on the pick holder
+X203,BASKET_EMPTY,DI,Station7-Slot0,No CSE left in the basket on the holder (photoeye array)
+X204,BASKET_STACK_PRESENT,DI,Station7-Slot0,At least one basket in the standby stack
+X205,EMPTY_BASKET_AT_COLLECTOR,DI,Station7-Slot0,Empty basket arrived at the collector
+#
+# --- DIGITAL INPUTS: Poka-Yoke CCD and Epson RC700-A handshake (slide 18) ---
+X210,PY_DONE,DI,EIP-CIP,Poka-Yoke orientation result available
+X211,PY_OK,DI,EIP-CIP,Poka-Yoke GO (orientation acceptable)
+X212,PY_CASE_SEL_BIT0,DI,EIP-CIP,Poka-Yoke case select bit 0 (1 = 1st case bottom-side pick; 2 = 2nd case)
+X213,PY_CASE_SEL_BIT1,DI,EIP-CIP,Poka-Yoke case select bit 1
+X214,ROBOT_READY,DI,Station7-Slot1,Robot ready for a start command
+X215,ROBOT_BUSY,DI,Station7-Slot1,Robot executing the pick/rotate/place cycle
+X216,ROBOT_DONE,DI,Station7-Slot1,Robot cycle complete - 4 CSEs on the purple platform
+X217,ROBOT_ALARM,DI,Station7-Slot1,Robot controller alarm
+#
+# --- DIGITAL INPUTS: Pitch Change Mechanism (slides 19-20) ---
+X220,HOLDER_OPEN,DI,Station7-Slot1,Blue holder open confirm
+X221,HOLDER_CLOSED,DI,Station7-Slot1,Blue holder closed confirm
+X222,FLIP_DONE,DI,Station7-Slot1,Blue holder 180-degree flip at inverted position
+X223,FLIP_HOME,DI,Station7-Slot1,Blue holder flip at home position
+#
+# --- DIGITAL INPUTS: Lighting Check Chamber (slides 21-22) ---
+X224,SHADE_CLOSED,DI,Station8-Slot0,Shade/light source forward - chamber closed
+X225,SHADE_OPEN,DI,Station8-Slot0,Shade/light source back - chamber open
+#
+# --- DIGITAL INPUTS: Top Check (slide 24) ---
+X226,CCD1_EXTENDED,DI,Station8-Slot0,CCD#1 reach-out cylinder extended
+X227,CCD1_RETRACTED,DI,Station8-Slot0,CCD#1 reach-out cylinder retracted
+#
+# --- DIGITAL INPUTS: Side Check (slide 26) ---
+X230,GRIPPER_UP,DI,Station8-Slot0,Side-check gripper lifted
+X231,GRIPPER_DOWN,DI,Station8-Slot0,Side-check gripper lowered
+#
+# --- DIGITAL INPUTS: Tray Handling (slides 28-29) ---
+X232,TRAY_FULL,DI,EIP-CIP,Upside camera: current output tray full
+X233,TRAY_AT_POS1,DI,Station8-Slot1,Output tray at position 1 (filling)
+X234,EMPTY_TRAY_PRESENT,DI,Station8-Slot1,Empty tray available in the loader
+X235,STACK_GRIPPER_UP,DI,Station8-Slot1,Full-tray stack gripper lifted
+#
+# --- DIGITAL INPUTS: NG Path (slide 27) ---
+X236,NG_AT_HOLDER_BAR,DI,Station8-Slot1,NG CSE stopped at the holder bar
+X237,NG_TRAY_PRESENT,DI,Station8-Slot1,NG tray in place
+#
+# --- DIGITAL INPUTS: Servo Drive Status, axes 9-15 (CC-Link IE Field cyclic) ---
+X240,SERVO9_READY,DI,Station4-Slot0,Theta 3 drive ready
+X241,SERVO9_IN_POS,DI,Station4-Slot0,Theta 3 in-position
+X242,SERVO10_READY,DI,Station4-Slot0,Theta 4 drive ready
+X243,SERVO10_IN_POS,DI,Station4-Slot0,Theta 4 in-position
+X244,SERVO11_READY,DI,Station4-Slot1,Side rotator 1 drive ready
+X245,SERVO11_IN_POS,DI,Station4-Slot1,Side rotator 1 in-position
+X246,SERVO12_READY,DI,Station4-Slot1,Side rotator 2 drive ready
+X247,SERVO12_IN_POS,DI,Station4-Slot1,Side rotator 2 in-position
+X250,SERVO13_READY,DI,Station5-Slot0,Side rotator 3 drive ready
+X251,SERVO13_IN_POS,DI,Station5-Slot0,Side rotator 3 in-position
+X252,SERVO14_READY,DI,Station5-Slot0,Side rotator 4 drive ready
+X253,SERVO14_IN_POS,DI,Station5-Slot0,Side rotator 4 in-position
+X254,SERVO15_READY,DI,Station5-Slot1,Pitch e-cylinder drive ready
+X255,SERVO15_IN_POS,DI,Station5-Slot1,Pitch e-cylinder in-position
+#
+# --- DIGITAL OUTPUTS: Single Basket Feeding ---
+Y200,SOL_BASKET_STACK_HOLD,DO,Station7-Slot2,SMC SY3140 - hold the upper baskets
+Y201,SOL_HOLDING_BLOCK,DO,Station7-Slot2,SMC SY3140 - holding block under the last basket
+Y202,SOL_L_TRIGGER,DO,Station7-Slot2,SMC SY3140 - L trigger keeps the last basket down
+Y203,SOL_LIFTER_UP,DO,Station7-Slot2,SMC SY3340 - lifter splits the last basket
+Y204,SOL_EMPTY_BASKET_PUSH,DO,Station7-Slot2,SMC SY3340 - push the empty basket to the collector
+#
+# --- DIGITAL OUTPUTS: Poka-Yoke and Robot ---
+Y210,PY_TRIG,DO,Station7-Slot2,Poka-Yoke camera trigger
+Y211,ROBOT_START,DO,Station7-Slot3,Robot cycle start
+Y212,ROBOT_CASE_SEL,DO,Station7-Slot3,Robot case select: 0 = 2nd case; 1 = 1st case bottom-side pick
+#
+# --- DIGITAL OUTPUTS: Pitch Change and Nests ---
+Y220,SOL_PLATFORM_VACUUM,DO,Station7-Slot3,SMC SY3140 - purple platform vacuum
+Y221,SOL_BLUE_HOLDER_CLOSE,DO,Station7-Slot3,SMC SY3140 - blue holder close
+Y222,SOL_FLIP_180,DO,Station7-Slot3,SMC SY3340 - blue holder 180-degree flip (1st case)
+Y223,SOL_SHADE_FWD,DO,Station8-Slot2,SMC SY3340 - light source + shade forward (chamber close)
+Y224,SOL_CCD1_REACH,DO,Station8-Slot2,SMC SY3340 - CCD#1 reach-out cylinder
+Y225,SOL_GRIPPER_LIFT,DO,Station8-Slot2,SMC SY3340 - side-check gripper lift
+Y226,SOL_NEST_VACUUM_CCD4,DO,Station8-Slot2,SMC SY3140 - lighting-check nest vacuum
+Y227,SOL_NEST_VACUUM_SIDE,DO,Station8-Slot2,SMC SY3140 - side-check nest vacuum
+#
+# --- DIGITAL OUTPUTS: Transfer 5 per-unit release, Tray Handling, NG Path ---
+Y230,SOL_T5_RELEASE_1,DO,Station8-Slot3,Transfer 5 head release - unit 1
+Y231,SOL_T5_RELEASE_2,DO,Station8-Slot3,Transfer 5 head release - unit 2
+Y232,SOL_T5_RELEASE_3,DO,Station8-Slot3,Transfer 5 head release - unit 3
+Y233,SOL_T5_RELEASE_4,DO,Station8-Slot3,Transfer 5 head release - unit 4
+Y234,SOL_STACK_GRIPPER,DO,Station8-Slot3,SMC SY3340 - full-tray stack gripper
+Y235,SOL_TRAY_PUSH_POS2,DO,Station8-Slot3,SMC SY3340 - move the full tray from position 1 to 2
+Y236,SOL_TRAY_LOADER_FEED,DO,Station8-Slot3,SMC SY3340 - feed one empty tray
+Y237,NG_BELT_RUN,DO,Station8-Slot3,NG conveyor motor run
+Y240,SOL_NG_HOLDER_BAR,DO,Station8-Slot3,SMC SY3140 - NG belt holder bar
+Y241,VISION_NG_CCD_TRIGGER,DO,Station6-Slot1,NG check CCD trigger pulse
+#
+# --- DIGITAL OUTPUTS: Servo Enable, axes 9-15 ---
+Y242,SERVO9_ENABLE,DO,Station4-Slot0,Theta 3 servo ON
+Y243,SERVO10_ENABLE,DO,Station4-Slot0,Theta 4 servo ON
+Y244,SERVO11_ENABLE,DO,Station4-Slot1,Side rotator 1 servo ON
+Y245,SERVO12_ENABLE,DO,Station4-Slot1,Side rotator 2 servo ON
+Y246,SERVO13_ENABLE,DO,Station5-Slot0,Side rotator 3 servo ON
+Y247,SERVO14_ENABLE,DO,Station5-Slot0,Side rotator 4 servo ON
+Y250,SERVO15_ENABLE,DO,Station5-Slot1,Pitch e-cylinder servo ON

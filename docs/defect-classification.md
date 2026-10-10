@@ -9,7 +9,7 @@
 
 ## 1. Overview
 
-The AOI system classifies defects across 19 categories organized into three groups: Function (8 categories), Cosmetic (4 categories), and Assembly (5 categories). Additionally, two supplementary defect types have been verified. All 19 categories achieved a 100% detection rate on the provided reference samples during system validation.
+The AOI system classifies defects across the 19 categories of the V1.4 testing report (slide 8), organized into three groups: Function (9 categories), Cosmetic (4 categories), and Assembly (6 categories). The lighting check additionally reports two inner-staining-residue sub-checks (staining on edge, yellow glass cement; 10 samples each). All categories with samples achieved a 100% detection rate on the provided reference samples; Epoxy Overflow, Pin Bur and Pin Mis-cut had no real sample and their thresholds are marked `provisional` in the station configs.
 
 ---
 
@@ -19,27 +19,31 @@ The AOI system classifies defects across 19 categories organized into three grou
 
 | # | Category | Group | Detection CCD | Critical | Notes |
 |---|----------|-------|---------------|----------|-------|
-| 1 | Lighting Check (Light Leakage) | Function | CCD#4 | -- | Functional test, not cosmetic |
-| 2 | Crack | Function | CCD#3 | CRITICAL | Hairline or visible cracks in ceramic |
-| 3 | Broken | Function | CCD#3 | CRITICAL | Chipped or fractured ceramic body |
-| 4 | Epoxy Exposal | Function | CCD#3 | -- | Adhesive visible where not permitted |
-| 5 | Pin Missing | Function | CCD#2 | -- | One or more lead pins absent |
-| 6 | Electrical Contamination | Function | CCD#1 / CCD#3 | -- | Conductive foreign material |
-| 7 | Gold Exposal | Function | CCD#2 | -- | Exposed gold wire/pad from side view |
-| 8 | Insufficient Epoxy | Function | CCD#3 | -- | Epoxy coverage below specification |
-| 9 | Dyeing Contamination | Cosmetic | CCD#1 / CCD#3 | -- | Dye/ink staining on surfaces |
-| 10 | Non-Electrical Contamination | Cosmetic | CCD#1 / CCD#3 | -- | Non-conductive foreign material |
-| 11 | No Code | Cosmetic | CCD#1 | -- | Marking entirely absent |
-| 12 | Code Blur | Cosmetic | CCD#1 | -- | Marking illegible or degraded |
-| 13 | Pin Bent | Assembly | CCD#2 | -- | Lead pins deformed beyond tolerance |
-| 14 | Pin Oxidized | Assembly | CCD#2 | -- | Oxidation/discoloration on pin surface |
-| 15 | Pin Bur | Assembly | CCD#2 | CRITICAL | Burrs on pin edges* |
-| 16 | Pin Mis-cut | Assembly | CCD#2 | -- | Pins cut incorrectly* |
-| 17 | Epoxy Higher Than Ceramic | Assembly | CCD#2 / CCD#3 | -- | Epoxy overflow above ceramic edge |
-| 18 | Misalignment | Assembly | CCD#1 | CRITICAL | Package body positional offset |
-| 19 | Staining on Edge | Supplementary | CCD#1 / CCD#3 | -- | Inner staining residue, yellow glass cement |
+| 1 | Lighting Check | Function | CCD#4 | CRITICAL | Transmitted-light leakage, closed chamber |
+| 2 | Crack | Function | CCD#1 / CCD#3 | CRITICAL | Hairline or visible cracks in ceramic |
+| 3 | Broken | Function | CCD#1 / CCD#3 | CRITICAL | Chipped rim; the key notch is exempt |
+| 4 | Epoxy Exposal | Function | CCD#1 | -- | Granular grey patch next to a pin (slide 34) |
+| 5 | Pin Missing | Function | CCD#1 | -- | Pin hole without a metallic core (slide 35) |
+| 6 | Electrical Contamination | Function | CCD#1 / CCD#3 | -- | Dark metallic textured streak (slide 36) |
+| 7 | Gold Exposal | Function | CCD#2 | -- | Gold/brown patch on the ceramic side wall (slide 37) |
+| 8 | Insufficient Epoxy | Function | CCD#1 | -- | Epoxy ring around a pin under-filled (slide 38) |
+| 9 | Epoxy Overflow | Function | CCD#1 | -- | Epoxy blob around a pin too large (slide 44)* |
+| 10 | Dyeing Contamination | Cosmetic | CCD#1 / CCD#3 | -- | Saturated colour stain (slide 39) |
+| 11 | Non-Electrical Contamination | Cosmetic | CCD#1 / CCD#3 | -- | Light smudge (slide 40) |
+| 12 | No Code | Cosmetic | CCD#1 | -- | Marking entirely absent (slide 41) |
+| 13 | Code Blur | Cosmetic | CCD#1 | -- | Marking illegible (slide 42) |
+| 14 | Pin Bent | Assembly | CCD#2 | -- | Pin angle from vertical beyond tolerance (slide 43) |
+| 15 | Pin Oxidized | Assembly | CCD#2 | -- | Pin dull/dark instead of bright gold |
+| 16 | Pin Bur | Assembly | CCD#2 | -- | Tip wider than the pin body* |
+| 17 | Pin Mis-cut | Assembly | CCD#2 | -- | Pin length outside tolerance* |
+| 18 | Epoxy Higher Than Ceramic | Assembly | CCD#2 | -- | Bump in the body's top-edge profile |
+| 19 | Misalignment | Assembly | CCD#1 / CCD#3 / CCD#4 | CRITICAL | Disc centre vs fixture (CCD#1/#3) or nest ring (CCD#4, slide 45) |
+| -- | Staining on Edge | Inner residue | CCD#4 | -- | Dark compact patch in the outer annulus band |
+| -- | Yellow Glass Cement | Inner residue | CCD#4 | -- | Yellow blob more saturated/brighter than its ring |
 
-\* Pin Bur and Pin Mis-cut require real production samples for final validation; initial threshold tuning was performed on provided reference samples.
+Critical items are the four marked purple on slide 8. Severity of the inner-residue sub-checks is a project decision (MINOR); the spec gives none.
+
+\* Epoxy Overflow, Pin Bur and Pin Mis-cut had 0 real samples ("base on real sample", slide 8); their thresholds are `provisional: true` in `config/vision-system/`.
 
 ---
 
@@ -55,6 +59,7 @@ These defects affect the electrical or optical functionality of the CSE product.
 
 - **Group:** Function
 - **Detection CCD:** CCD#4 (closed dark chamber)
+- **Critical Defect:** Yes
 - **Description:** The CSE package contains a glass structure designed to transmit light only through designated optical paths. Light leakage occurs when light passes through unintended paths -- indicating cracks in the glass, seal failures, or structural defects in the optical assembly.
 - **Detection Method:** Transmitted-light imaging in a sealed dark chamber. The DN-HSP25-W hyper spot light illuminates through the sapphire glass substrate from below. Any light reaching the camera through the glass cover indicates leakage. The telecentric lens (DTCM110-48) ensures uniform magnification for accurate leakage localization.
 - **Pass/Fail Criteria:** Any detectable light intensity above the dark-field noise threshold in non-designated regions constitutes a fail.
@@ -65,7 +70,7 @@ These defects affect the electrical or optical functionality of the CSE product.
 #### F2: Crack
 
 - **Group:** Function
-- **Detection CCD:** CCD#3 (bottom surface)
+- **Detection CCD:** CCD#1 (top) and CCD#3 (bottom)
 - **Critical Defect:** Yes
 - **Description:** Hairline or visible cracks in the ceramic substrate. Cracks compromise the hermetic seal and mechanical integrity of the package, leading to potential field failures.
 - **Detection Method:** Edge detection and high-pass filtering on the bottom surface image. Cracks appear as dark linear features against the uniform ceramic background under coaxial illumination.
@@ -76,7 +81,7 @@ These defects affect the electrical or optical functionality of the CSE product.
 #### F3: Broken
 
 - **Group:** Function
-- **Detection CCD:** CCD#3 (bottom surface)
+- **Detection CCD:** CCD#1 (top) and CCD#3 (bottom)
 - **Critical Defect:** Yes
 - **Description:** Chipped, fractured, or physically broken ceramic body. Represents severe mechanical damage.
 - **Detection Method:** Blob analysis and edge integrity checking. Broken regions appear as missing or irregular portions of the expected package outline.
@@ -87,7 +92,7 @@ These defects affect the electrical or optical functionality of the CSE product.
 #### F4: Epoxy Exposal
 
 - **Group:** Function
-- **Detection CCD:** CCD#3 (bottom surface)
+- **Detection CCD:** CCD#1 (top surface, next to the pins)
 - **Description:** Adhesive epoxy is visible on surfaces where it should not be present. Indicates manufacturing process deviation in die attach or lid seal.
 - **Detection Method:** Color/intensity segmentation. Epoxy typically has a different color signature (amber/brown) from the ceramic substrate (white/grey) and metal features.
 - **Pass/Fail Criteria:** Epoxy visible outside the designated bonding area beyond the area tolerance threshold.
@@ -97,7 +102,7 @@ These defects affect the electrical or optical functionality of the CSE product.
 #### F5: Pin Missing
 
 - **Group:** Function
-- **Detection CCD:** CCD#2 (side view, 360-degree rotation)
+- **Detection CCD:** CCD#1 (top surface; pins exist on the top side, slide 9)
 - **Description:** One or more lead pins are entirely absent from their expected positions.
 - **Detection Method:** Pin counting and position verification during 360-degree rotation. Expected pin positions are defined per product recipe; missing positions are flagged.
 - **Pass/Fail Criteria:** Any missing pin constitutes a fail.
@@ -127,7 +132,7 @@ These defects affect the electrical or optical functionality of the CSE product.
 #### F8: Insufficient Epoxy
 
 - **Group:** Function
-- **Detection CCD:** CCD#3 (bottom surface)
+- **Detection CCD:** CCD#1 (top surface, epoxy ring around each pin)
 - **Description:** Epoxy adhesive coverage is below the minimum specification, indicating inadequate die attach or lid seal strength.
 - **Detection Method:** Area measurement of the epoxy region in the bottom-view image. The detected epoxy area is compared against the minimum coverage threshold defined in the product recipe.
 - **Pass/Fail Criteria:** Epoxy coverage area below the recipe-specified minimum percentage.
@@ -210,7 +215,7 @@ Assembly defects are related to the mechanical assembly and packaging process --
 
 - **Group:** Assembly
 - **Detection CCD:** CCD#2 (side view, 360-degree rotation)
-- **Critical Defect:** Yes
+- **Critical Defect:** No (purple text on slide 8, not a purple row)
 - **Description:** Burrs or excess material remaining on pin edges from the trimming/forming process. Burrs can interfere with PCB assembly (soldering, socket insertion) and pose short-circuit risks.
 - **Detection Method:** Edge roughness analysis on pin outlines. Burrs appear as irregular protrusions along the expected smooth pin edge profile.
 - **Pass/Fail Criteria:** Any detectable burr protrusion exceeding the minimum size threshold.
@@ -232,7 +237,7 @@ Assembly defects are related to the mechanical assembly and packaging process --
 #### A5: Epoxy Higher Than Ceramic
 
 - **Group:** Assembly
-- **Detection CCD:** CCD#2 (side view) and CCD#3 (bottom view)
+- **Detection CCD:** CCD#2 (side view, top-edge profile)
 - **Description:** Epoxy adhesive has overflowed above the ceramic body edge, creating a raised protrusion that could interfere with assembly or sealing.
 - **Detection Method:** Profile height analysis in side view (epoxy ridge visible above the ceramic edge line); area/intensity analysis in bottom view.
 - **Pass/Fail Criteria:** Epoxy height above ceramic edge exceeding the recipe-defined maximum.
@@ -242,7 +247,7 @@ Assembly defects are related to the mechanical assembly and packaging process --
 #### A6: Misalignment
 
 - **Group:** Assembly
-- **Detection CCD:** CCD#1 (top surface)
+- **Detection CCD:** CCD#1 / CCD#3 (fixture centre) and CCD#4 (nest ring, slide 45)
 - **Critical Defect:** Yes
 - **Description:** The CSE package body is offset from its expected position, indicating placement error during assembly. Misalignment may affect pin alignment with PCB pads.
 - **Detection Method:** Pattern matching of package body features (edges, fiducials) against expected positions. Positional and angular offsets are computed.

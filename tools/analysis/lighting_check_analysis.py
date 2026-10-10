@@ -23,13 +23,13 @@ from typing import List, Optional, Tuple
 
 import numpy as np
 
-from src.data_types.defect_types import (
+from tools.analysis.defect_types import (
     CameraID,
     DefectDetail,
     DefectSeverity,
     DefectType,
 )
-from src.global_variables.system_config import CAMERA_SPECS, THRESHOLDS
+from tools.analysis.system_config import CAMERA_SPECS, THRESHOLDS
 
 logger = logging.getLogger(__name__)
 

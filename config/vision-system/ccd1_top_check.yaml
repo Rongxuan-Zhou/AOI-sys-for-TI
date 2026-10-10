@@ -62,45 +62,72 @@ image_preprocessing:
   noise_kernel_size: 3
 
 defects_detected:
+  # spec V1.4 slide 9: top side check + misalignment; pins exist on the top side
   - crack
   - broken
-  - epoxy_exposal
+  - misalignment
+  - pin_missing
   - insufficient_epoxy
+  - epoxy_overflow
+  - epoxy_exposal
   - dyeing_contamination
+  - electrical_contamination
   - non_electrical_contamination
   - no_code
   - code_blur
-  - misalignment
 
+# Keys mirror aoi::DetectionParams / LocatorParams (src/vision/DefectDetector.h).
+# Values are for the production frame (2448 x 2048, 0.0115 mm/px); the header
+# defaults in C++ are for the 640-800 px synthetic test frames.
 inspection_thresholds:
+  locator:
+    min_disc_radius_px: 300
+    min_otsu_thresh: 30
+    disc_fg_thresh: 40
+    notch_width_deg: 7.0
+    notch_depth_px: 36
+    fit_inlier_ratio: 0.03
+    interior_margin_px: 60
+  mm_per_px_ccd123: 0.0115
+  fixture_center_ccd1: [1224, 1024]     # calibrated per station
+  misalign_max_offset_mm: 0.15
+  expected_pin_count: 4                 # recipe: 3 or 4 (slides 35-44)
   crack:
-    min_length_mm: 0.05
-    min_width_mm: 0.01
+    crack_blackhat_kernel_px: 41
+    crack_blackhat_thresh: 25
+    crack_aspect_min: 4.0
+    crack_min_length_px: 90             # ~1.0 mm
     severity: critical
   broken:
-    min_area_mm2: 0.1
+    broken_depth_px: 20                 # ~0.23 mm
     severity: critical
+  pins:
+    pin_head_dark_thresh: 110
+    pin_head_radius_px: 60
+    epoxy_ring_px: 30
+    pin_core_val_min: 170
+    pin_core_area_min_px: 150
+    epoxy_sat_min: 50
+    epoxy_val_max: 160
+    epoxy_ring_min_fill: 0.6
+    epoxy_overflow_ratio: 2.5
+    epoxy_hue_low: 8
+    epoxy_hue_high: 30
+  epoxy_overflow:
+    provisional: true                   # 0 real samples on slide 8 ("base on real sample")
   epoxy_exposal:
-    min_area_mm2: 0.02
-    severity: major
-  insufficient_epoxy:
-    coverage_threshold_pct: 85
-    severity: major
-  dyeing_contamination:
-    min_area_mm2: 0.01
-    contrast_threshold: 30
-    severity: minor
-  non_electrical_contamination:
-    min_area_mm2: 0.01
-    severity: minor
-  no_code:
-    ocr_confidence_threshold: 0.3
-    severity: critical
-  code_blur:
-    sharpness_threshold: 50
-    ocr_confidence_threshold: 0.7
-    severity: major
-  misalignment:
-    max_offset_mm: 0.15
-    max_rotation_deg: 2.0
-    severity: major
+    exposal_sat_max: 40
+    exposal_texture_min: 18.0
+    exposal_area_min_px: 2500
+  contamination:
+    contam_area_min_px: 300
+    dyeing_sat_min: 70
+    electrical_dark_max: 120
+    electrical_texture_min: 20.0
+  code:
+    code_roi_w: 900
+    code_roi_h: 300
+    code_offset_px: 100
+    code_ink_contrast: 30
+    code_min_ink_ratio: 0.03
+    code_laplacian_blur_limit: 80.0

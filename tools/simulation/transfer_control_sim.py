@@ -26,8 +26,8 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Callable, Dict, List, Optional
 
-from src.data_types.defect_types import CameraID
-from src.global_variables.system_config import TRANSFER_POSITIONS, TransferPosition
+from tools.analysis.defect_types import CameraID
+from tools.analysis.system_config import TRANSFER_POSITIONS, TransferPosition
 
 logger = logging.getLogger(__name__)
 

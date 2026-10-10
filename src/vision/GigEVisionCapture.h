@@ -2,9 +2,14 @@
 /**
  * GigE Vision capture interface for the TI CSE AOI system.
  *
- * Wraps the Hikrobot MVS SDK to manage four industrial cameras
- * (3x MV-GE501GC 5MP + 1x MV-GE2000C 20MP) over GigE Vision 2.0.
- * Supports hardware triggering synchronised with Gardasoft RT820F-20
+ * Wraps the Hikrobot MVS SDK to manage the machine's GigE Vision 2.0
+ * cameras: four MV-GE501GC per inspection station for CCD#1/#2/#3, four
+ * MV-GE2000C for CCD#4 (spec slide 10: "MV-GE501GC * 4",
+ * "MV-GE2000C-T1P-C*4"), plus the single Poka-Yoke, NG-check and tray
+ * monitor cameras. A camera is addressed by its station (CameraID) and its
+ * unit index 1..4 within the station.
+ *
+ * Supports hardware triggering synchronised with the Gardasoft RT820F-20
  * strobe controller via GPIO Line0.
  *
  * Author: Rongxuan Zhou
@@ -22,17 +27,13 @@
 #include <opencv2/core.hpp>
 #include <MvCameraControl.h>
 
-namespace aoi {
+#include "CameraID.h"
 
-enum class CameraID : int {
-    CCD1_TOP    = 1,
-    CCD2_SIDE   = 2,
-    CCD3_BOTTOM = 3,
-    CCD4_INNER  = 4
-};
+namespace aoi {
 
 struct CameraConfig {
     CameraID          id;
+    int               unit = 1;          // 1..4 within an inspection station, 1 otherwise
     std::string       serial;            // e.g. "DA0232856"
     int               width;
     int               height;
@@ -43,8 +44,8 @@ struct CameraConfig {
     std::string       subnet;            // e.g. "192.168.10"
 };
 
-/// Callback signature: (camera_id, timestamp_ns, frame_mat)
-using FrameCallback = std::function<void(CameraID, uint64_t, const cv::Mat&)>;
+/// Callback signature: (station, unit, timestamp_ns, frame_mat)
+using FrameCallback = std::function<void(CameraID, int, uint64_t, const cv::Mat&)>;
 
 /**
  * Lock-free SPSC ring buffer for inter-thread frame passing.
@@ -74,33 +75,37 @@ public:
     GigEVisionCapture& operator=(const GigEVisionCapture&) = delete;
 
     bool Initialize(const std::vector<CameraConfig>& configs);
-    bool StartAcquisition(CameraID cam);
-    bool StopAcquisition(CameraID cam);
+    bool StartAcquisition(CameraID cam, int unit = 1);
+    bool StopAcquisition(CameraID cam, int unit = 1);
     void StopAll();
 
-    bool SetTriggerMode(CameraID cam, bool hardware);
-    bool SetExposure(CameraID cam, float exposure_us);
-    void RegisterFrameCallback(CameraID cam, FrameCallback cb);
+    bool SetTriggerMode(CameraID cam, int unit, bool hardware);
+    bool SetExposure(CameraID cam, int unit, float exposure_us);
+    void RegisterFrameCallback(CameraID cam, int unit, FrameCallback cb);
 
-    /// Blocking retrieval with timeout. Returns empty Mat on timeout.
-    cv::Mat GetFrame(CameraID cam, int timeout_ms = 1000);
+    /// Blocking retrieval with timeout. Returns empty Mat on timeout or unknown slot.
+    cv::Mat GetFrame(CameraID cam, int unit = 1, int timeout_ms = 1000);
 
-private:
-    static constexpr int kMaxCameras   = 4;
+    /// Number of configured camera slots.
+    int SlotCount() const { return static_cast<int>(cameras_.size()); }
+
+    static constexpr int kMaxCameras   = 20;   // 4 stations x 4 units + auxiliary cameras
     static constexpr int kRingCapacity = 8;
 
+private:
     struct CameraHandle {
         void*                            handle = nullptr;
         CameraConfig                     config;
         FrameCallback                    callback;
-        FrameRingBuffer<8>               ring;
+        FrameRingBuffer<kRingCapacity>   ring;
         std::atomic<bool>                acquiring{false};
     };
 
-    std::array<CameraHandle, kMaxCameras> cameras_;
-    bool                                  initialized_ = false;
+    std::vector<std::unique_ptr<CameraHandle>> cameras_;
+    bool                                       initialized_ = false;
 
-    int  CamIndex(CameraID id) const { return static_cast<int>(id) - 1; }
+    /// Index into cameras_ for (station, unit); -1 when not configured.
+    int  FindSlot(CameraID id, int unit) const;
     bool OpenDevice(CameraHandle& cam);
     bool ConfigureTransport(CameraHandle& cam);
     bool ConfigureTrigger(CameraHandle& cam, bool hardware);

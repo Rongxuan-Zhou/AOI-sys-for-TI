@@ -18,7 +18,7 @@
 
 #include <opencv2/core.hpp>
 
-#include "GigEVisionCapture.h"
+#include "CameraID.h"
 
 namespace aoi {
 

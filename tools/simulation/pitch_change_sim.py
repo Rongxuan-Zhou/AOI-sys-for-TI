@@ -23,7 +23,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import List
 
-from src.global_variables.system_config import (
+from tools.analysis.system_config import (
     PITCH_COMPACT_SPACING_MM,
     PITCH_INSPECTION_SPACING_MM,
     UNITS_PER_PICK_CYCLE,
