@@ -218,49 +218,60 @@ Detailed technical documentation covering every subsystem:
 
 ## Source Code
 
-> **C++ 17 / IEC 61131-3 ST** -- Real-time vision pipeline and PLC control logic. C++ handles performance-critical image acquisition and defect detection via Hikrobot MVS SDK. PLC structured text implements the 18-step inspection state machine and safety logic.
+> **C++ 17 / IEC 61131-3 ST** -- Real-time vision pipeline and PLC control logic, implemented to spec *CSE Round Lighting check and FI AOI V1.4*. C++ handles image acquisition (Hikrobot MVS SDK) and defect detection; PLC structured text implements the 18-step process flow and the safety logic. The algorithm library builds and tests without the camera SDK.
+
+```
+cmake -S src/vision -B src/vision/build -DAOI_WITH_MVS=OFF -DAOI_BUILD_TESTS=ON
+cmake --build src/vision/build -j8 && ctest --test-dir src/vision/build
+python3 tools/plc/st_lint.py src/plc/*.st
+```
 
 | Module | File | Description |
 |:-------|:-----|:------------|
-| **Vision (C++)** | [`GigEVisionCapture.cpp`](src/vision/GigEVisionCapture.cpp) | GigE Vision 2.0 acquisition, HW trigger, Jumbo Frame, lock-free ring buffer |
-| | [`ImagePreprocessor.cpp`](src/vision/ImagePreprocessor.cpp) | Bayer demosaic, CLAHE, flat-field correction, sapphire glass compensation, cylindrical unwrap |
-| | [`CseLocator.cpp`](src/vision/CseLocator.cpp) | Disc fit (two-pass LSQ), key-notch angle, interior mask, polar unwrap -- shared by every station |
-| | [`LightingCheck.cpp`](src/vision/LightingCheck.cpp) | CCD#4 inner check: ring-median baseline, leakage / edge staining / yellow glass cement, nest alignment, thickness class |
-| | [`DefectDetector.cpp`](src/vision/DefectDetector.cpp) | 19-category detection engine routed per station (spec slide 9): rim chips, cracks, pins and epoxy rings, contamination classes, marking code, side-view pin geometry |
-| | [`tests/`](src/vision/tests) | GoogleTest suite on synthetic CSE images (`cmake -DAOI_WITH_MVS=OFF -DAOI_BUILD_TESTS=ON`) |
-| | [`pybind_module.cpp`](src/vision/pybind_module.cpp) | pybind11 bindings for offline analysis tools |
-| | [`CMakeLists.txt`](src/vision/CMakeLists.txt) | Build config: OpenCV 4.x, Hikrobot MVS SDK, pybind11 |
-| **PLC (ST)** | [`main_sequence.st`](src/plc/main_sequence.st) | State machine on the 18-step process flow (slide 15): basket feeding, Poka-Yoke + SCARA handshake, pitch change + 180-degree flip, shade / lighting check, CCD#3 on the fly, CCD#1 reach-out, 4 theta units, 36-frame side sweep, tray / NG sorting, NG reconfirm |
-| | [`safety_program.st`](src/plc/safety_program.st) | ISO 13849-1 PLd Cat.3 safety logic, E-Stop, light curtain, STO |
-| | [`servo_config.st`](src/plc/servo_config.st) | 15-axis servo profiles (6 transfers, 4 theta units, 4 side rotators, pitch e-cylinder), homing sequences, CC-Link IE Field drive mapping |
-| | [`io_mapping.csv`](src/plc/io_mapping.csv) | I/O allocation table incl. basket feeder, robot handshake, chamber shade, nests, tray loader/stacker, NG belt |
-| | [`tools/plc/st_lint.py`](tools/plc/st_lint.py) | Structural lint for the ST sources (block pairs, unhandled states, ST_ERROR output resets) |
+| **Vision (C++)** | [`CameraID.h`](src/vision/CameraID.h) | Station identifiers (CCD#1-#4, NG check, Poka-Yoke, tray monitor); each inspection station carries 4 cameras, addressed by (station, unit) |
+| | [`DefectTypes.h`](src/vision/DefectTypes.h) | Taxonomy: the 19 spec defects in slide-8 order plus the 2 inner-staining-residue sub-checks, groups, severities, snake_case names shared with the YAML configs and the PLC `DEFECT_CODE` |
+| | [`CseLocator.cpp`](src/vision/CseLocator.cpp) | Disc centre/radius (convex-hull + inlier least-squares fit), key-notch angle, interior mask, polar unwrap, 8-bit conversion -- shared by every station |
+| | [`LightingCheck.cpp`](src/vision/LightingCheck.cpp) | CCD#4 inner check: per-radius ring-percentile baseline on the unwrapped annulus (colour independent: amber / green / blue), light leakage, staining on edge, yellow glass cement, nest-ring alignment |
+| | [`DefectDetector.cpp`](src/vision/DefectDetector.cpp) | Per-station routing (spec slide 9) and the detectors: rim chips with notch exemption, cracks, misalignment, pin holes and epoxy rings, epoxy exposal, contamination classes, marking code along the notch, side-view pin geometry / oxidation, gold exposal, epoxy bump |
+| | [`ImagePreprocessor.cpp`](src/vision/ImagePreprocessor.cpp) | Bayer demosaic, CLAHE, flat-field correction, sapphire glass chromatic compensation, cylindrical unwrap |
+| | [`GigEVisionCapture.cpp`](src/vision/GigEVisionCapture.cpp) | GigE Vision 2.0 acquisition via MVS SDK, one handle per (station, unit), HW trigger, jumbo frames, lock-free ring buffer |
+| | [`pybind_module.cpp`](src/vision/pybind_module.cpp) | pybind11 bindings (`_aoi_vision_core`): detector, locator, lighting check, capture, parameter structs |
+| | [`CMakeLists.txt`](src/vision/CMakeLists.txt) | `aoi_vision_algo` (OpenCV only) + `aoi_vision_core` (MVS SDK, pybind11); options `AOI_WITH_MVS`, `AOI_BUILD_TESTS` |
+| | [`tests/`](src/vision/tests) | GoogleTest suite (56 tests) on synthetic CSE images: locator, taxonomy/routing, ceramic, top side, contamination, side view, lighting check |
+| **PLC (ST)** | [`main_sequence.st`](src/plc/main_sequence.st) | State machine on the 18-step process flow (slide 15): basket feeding, Poka-Yoke + SCARA handshake, pitch change + 180-degree flip, shade / lighting check, CCD#3 on the fly, CCD#1 reach-out, 4 theta units, 36-frame side sweep, tray / NG sorting, NG reconfirm; per-unit vision results, position-compared axis arrival, latched error requests |
+| | [`servo_config.st`](src/plc/servo_config.st) | 15-axis servo profiles (6 transfers, 4 theta units, 4 side rotators in degree unit, pitch e-cylinder), homing order, CC-Link IE Field drive mapping |
+| | [`safety_program.st`](src/plc/safety_program.st) | ISO 13849-1 PLd Cat.3 safety logic: dual-channel E-Stops, light curtains with muting, door interlocks, STO feedback |
+| | [`io_mapping.csv`](src/plc/io_mapping.csv) | CC-Link IE Field I/O allocation: sensors, servo status/enable, basket feeder, robot handshake, pitch mechanism, chamber shade, nests, tray loader/stacker, NG belt, camera triggers |
+| **PLC tooling (Python)** | [`st_lint.py`](tools/plc/st_lint.py) | Structural lint for the ST sources: block pairs, unhandled states, ST_ERROR output resets and axis stop, no raw `IN_POSITION` in state bodies, latched error requests |
 
 ### Offline Tools
 
-> **Python 3.10+** -- Non-real-time utilities for calibration, data analysis, and offline simulation. Not part of the production control path.
+> **Python 3.10+** -- Non-real-time utilities for calibration, data analysis, and offline simulation. Not part of the production control path; the camera and robot layers are simulated stubs.
 
 | Tool | File | Description |
 |:-----|:-----|:------------|
-| **Calibration** | [`camera_calibration.py`](tools/calibration/camera_calibration.py) | Spatial and illumination calibration pipeline for 4-CCD system |
-| | [`orientation_calibration.py`](tools/calibration/orientation_calibration.py) | Poka-Yoke orientation model training and compensation angle calculation |
+| **Shared** | [`defect_types.py`](tools/analysis/defect_types.py) | Python mirror of the C++ taxonomy (21 types, groups, severities, PLC defect codes); pre-V1.4 names kept as aliases |
+| | [`system_config.py`](tools/analysis/system_config.py) | Camera specs, thresholds, transfer positions and timing budgets for the simulators |
+| **Calibration** | [`camera_calibration.py`](tools/calibration/camera_calibration.py) | Spatial and illumination calibration pipeline, simulated camera controller |
+| | [`orientation_calibration.py`](tools/calibration/orientation_calibration.py) | Poka-Yoke orientation model and compensation-angle calculation |
 | **Analysis** | [`defect_classification_tool.py`](tools/analysis/defect_classification_tool.py) | Offline defect classification validation and threshold tuning |
-| | [`lighting_check_analysis.py`](tools/analysis/lighting_check_analysis.py) | CCD #4 light leakage analysis and reporting |
-| | [`ng_statistics.py`](tools/analysis/ng_statistics.py) | NG rate analysis, per-defect statistics, SPC charts |
-| **Simulation** | [`inspection_sequence_sim.py`](tools/simulation/inspection_sequence_sim.py) | Offline simulation of 18-step inspection sequence and timing analysis |
+| | [`lighting_check_analysis.py`](tools/analysis/lighting_check_analysis.py) | CCD#4 light-leakage analysis and reporting |
+| | [`ng_statistics.py`](tools/analysis/ng_statistics.py) | NG sorter model, NG rate analysis, per-defect statistics |
+| **Simulation** | [`inspection_sequence_sim.py`](tools/simulation/inspection_sequence_sim.py) | Offline simulation of the inspection sequence and timing analysis |
+| | [`robot_control_sim.py`](tools/simulation/robot_control_sim.py), [`transfer_control_sim.py`](tools/simulation/transfer_control_sim.py), [`pitch_change_sim.py`](tools/simulation/pitch_change_sim.py) | SCARA, transfer-axis and pitch-change mechanism models used by the sequence simulation |
 
 ---
 
 ## Configuration Files
 
-Hardware configuration files for each inspection station:
+Per-station recipes. Threshold keys mirror the C++ parameter structs (`DetectionParams`, `LocatorParams`, `LightingParams`) by name; values are for the production frame size. Items without real samples in the V1.4 testing report are marked `provisional: true`.
 
 | File | Description |
 |:-----|:------------|
-| [`ccd1_top_check.yaml`](config/vision-system/ccd1_top_check.yaml) | CCD #1 -- exposure, gain, ROI, 9 defect thresholds, coaxial illumination profile |
-| [`ccd2_side_check.yaml`](config/vision-system/ccd2_side_check.yaml) | CCD #2 -- 360-deg rotation (36 frames), pin geometry tolerances, cylindrical unwrap config |
-| [`ccd3_bottom_check.yaml`](config/vision-system/ccd3_bottom_check.yaml) | CCD #3 -- dark chamber enclosure, CLAHE preprocessing, bottom surface defect thresholds |
-| [`ccd4_lighting_check.yaml`](config/vision-system/ccd4_lighting_check.yaml) | CCD #4 -- sealed chamber sequence (shade close, DUT power, dark/lit frame), telecentric lens config |
+| [`ccd1_top_check.yaml`](config/vision-system/ccd1_top_check.yaml) | CCD #1 -- coaxial illumination, 12 top-side defects (ceramic, pins and epoxy rings, contamination, marking code), locator and fixture centre |
+| [`ccd2_side_check.yaml`](config/vision-system/ccd2_side_check.yaml) | CCD #2 -- 360-deg rotation (36 frames), `pins_up` orientation, pin geometry / oxidation, gold exposal, epoxy bump |
+| [`ccd3_bottom_check.yaml`](config/vision-system/ccd3_bottom_check.yaml) | CCD #3 -- bottom-side ceramic defects and contamination, amber epoxy region masked as structure |
+| [`ccd4_lighting_check.yaml`](config/vision-system/ccd4_lighting_check.yaml) | CCD #4 -- sealed chamber sequence, telecentric optics, ring-percentile baseline, leakage / staining / cement thresholds, nest-ring alignment, thickness classes |
 | [`illumination_profiles.yaml`](config/lighting/illumination_profiles.yaml) | Gardasoft RT820F-20 4-channel profiles -- per-station power/strobe/current/delay settings |
 
 ---
