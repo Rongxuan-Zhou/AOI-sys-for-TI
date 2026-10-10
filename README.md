@@ -18,7 +18,7 @@
 
 ---
 
-[Architecture](#system-architecture) · [Process Flow](#process-flow) · [Vision System](#vision-system) · [Source Code](#source-code) · [Documentation](#documentation) · [Tech Stack](#technology-stack)
+[Process Flow](#process-flow) · [Architecture](#system-architecture) · [Vision System](#vision-system) · [Source Code](#source-code) · [Documentation](#documentation) · [Tech Stack](#technology-stack)
 
 </div>
 
@@ -120,6 +120,18 @@ This project implements the complete vision inspection and material handling con
 
 ---
 
+## Process Flow
+
+<p align="center">
+  <img src="docs/images/pdf_pages/machine_exploded_view.png" width="90%" alt="Process Flow - Top-down Layout and Flowchart"/>
+</p>
+
+<p align="center">
+  <em>18-step process flow: top-down machine layout (left) with numbered station positions, and corresponding step-by-step flowchart (right) showing OK and NG paths.</em>
+</p>
+
+---
+
 ## System Architecture
 
 ```mermaid
@@ -178,18 +190,6 @@ flowchart TB
     NGV --> NGU
     NGC -- "False Reject" --> UT
 ```
-
----
-
-## Process Flow
-
-<p align="center">
-  <img src="docs/images/pdf_pages/machine_exploded_view.png" width="90%" alt="Process Flow - Top-down Layout and Flowchart"/>
-</p>
-
-<p align="center">
-  <em>18-step process flow: top-down machine layout (left) with numbered station positions, and corresponding step-by-step flowchart (right) showing OK and NG paths.</em>
-</p>
 
 ---
 
