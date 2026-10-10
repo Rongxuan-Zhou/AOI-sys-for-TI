@@ -2,6 +2,8 @@
  * GigE Vision capture implementation — Hikrobot MVS SDK wrapper.
  *
  * Key design decisions:
+ *   - One handle per physical camera, addressed by (station, unit); every
+ *     inspection station carries four cameras (spec slide 10)
  *   - Jumbo frames (8192 bytes) to reduce CPU interrupt load on GigE link
  *   - Hardware trigger via GPIO Line0 synced with Gardasoft RT820F-20
  *   - Lock-free ring buffer avoids mutex contention between SDK callback
@@ -14,6 +16,7 @@
 #include "GigEVisionCapture.h"
 
 #include <chrono>
+#include <cstdio>
 #include <cstring>
 #include <stdexcept>
 #include <thread>
@@ -56,7 +59,7 @@ std::size_t FrameRingBuffer<N>::size() const {
 }
 
 // Explicit instantiation for the capacity used in CameraHandle.
-template class FrameRingBuffer<8>;
+template class FrameRingBuffer<GigEVisionCapture::kRingCapacity>;
 
 // ---------------------------------------------------------------------------
 // Construction / Destruction
@@ -66,18 +69,32 @@ GigEVisionCapture::GigEVisionCapture() = default;
 GigEVisionCapture::~GigEVisionCapture() {
     StopAll();
     for (auto& cam : cameras_) {
-        if (cam.handle) {
-            MV_CC_CloseDevice(cam.handle);
-            MV_CC_DestroyHandle(cam.handle);
-            cam.handle = nullptr;
+        if (cam && cam->handle) {
+            MV_CC_CloseDevice(cam->handle);
+            MV_CC_DestroyHandle(cam->handle);
+            cam->handle = nullptr;
         }
     }
+}
+
+int GigEVisionCapture::FindSlot(CameraID id, int unit) const {
+    for (std::size_t i = 0; i < cameras_.size(); ++i) {
+        if (cameras_[i]->config.id == id && cameras_[i]->config.unit == unit)
+            return static_cast<int>(i);
+    }
+    return -1;
 }
 
 // ---------------------------------------------------------------------------
 // Initialize — enumerate GigE devices on vision VLAN and open configured ones
 // ---------------------------------------------------------------------------
 bool GigEVisionCapture::Initialize(const std::vector<CameraConfig>& configs) {
+    if (configs.size() > static_cast<std::size_t>(kMaxCameras)) {
+        fprintf(stderr, "[GigECapture] %zu cameras configured, max %d\n",
+                configs.size(), kMaxCameras);
+        return false;
+    }
+
     MV_CC_DEVICE_INFO_LIST device_list{};
     int ret = MV_CC_EnumDevices(MV_GIGE_DEVICE, &device_list);
     if (ret != MV_OK) {
@@ -87,10 +104,15 @@ bool GigEVisionCapture::Initialize(const std::vector<CameraConfig>& configs) {
 
     printf("[GigECapture] Found %u GigE devices\n", device_list.nDeviceNum);
 
+    cameras_.clear();
     for (const auto& cfg : configs) {
-        int idx = CamIndex(cfg.id);
-        if (idx < 0 || idx >= kMaxCameras) continue;
-        cameras_[idx].config = cfg;
+        if (FindSlot(cfg.id, cfg.unit) >= 0) {
+            fprintf(stderr, "[GigECapture] duplicate slot CCD%d/%d\n",
+                    static_cast<int>(cfg.id), cfg.unit);
+            return false;
+        }
+        auto cam = std::make_unique<CameraHandle>();
+        cam->config = cfg;
 
         // Match device by serial number within the vision subnet
         bool found = false;
@@ -110,19 +132,21 @@ bool GigEVisionCapture::Initialize(const std::vector<CameraConfig>& configs) {
                      (ip >> 24) & 0xFF, (ip >> 16) & 0xFF, (ip >> 8) & 0xFF);
 
             if (cfg.serial == serial && cfg.subnet == ip_str) {
-                if (!OpenDevice(cameras_[idx])) return false;
+                if (!OpenDevice(*cam)) return false;
                 found = true;
-                printf("[GigECapture] CCD%d (%s) opened on %s.%u\n",
-                       static_cast<int>(cfg.id), serial, ip_str, ip & 0xFF);
+                printf("[GigECapture] CCD%d/%d (%s) opened on %s.%u\n",
+                       static_cast<int>(cfg.id), cfg.unit, serial, ip_str, ip & 0xFF);
                 break;
             }
         }
 
         if (!found) {
-            fprintf(stderr, "[GigECapture] CCD%d serial %s not found on subnet %s\n",
-                    static_cast<int>(cfg.id), cfg.serial.c_str(), cfg.subnet.c_str());
+            fprintf(stderr, "[GigECapture] CCD%d/%d serial %s not found on subnet %s\n",
+                    static_cast<int>(cfg.id), cfg.unit, cfg.serial.c_str(),
+                    cfg.subnet.c_str());
             return false;
         }
+        cameras_.push_back(std::move(cam));
     }
 
     initialized_ = true;
@@ -174,12 +198,12 @@ bool GigEVisionCapture::ConfigureTransport(CameraHandle& cam) {
                             : kJumboFrameSize;
     MV_CC_SetIntValue(cam.handle, "GevSCPSPacketSize", pkt_size);
 
-    // Inter-packet delay — tuned to avoid switch congestion on 4-camera VLAN.
-    // ~40 us gap keeps aggregate bandwidth under 900 Mbit/s on a 1 GbE link.
+    // Inter-packet delay — tuned to avoid switch congestion on the camera VLAN.
+    // ~40 us gap keeps aggregate bandwidth under 900 Mbit/s per link.
     MV_CC_SetIntValue(cam.handle, "GevSCPD", 40);
 
     // Receive buffer — 3 frames worth to absorb trigger jitter
-    int frame_bytes = cam.config.width * cam.config.height;  // mono
+    int frame_bytes = cam.config.width * cam.config.height;  // mono / raw Bayer
     MV_CC_SetIntValue(cam.handle, "GevStreamChannelBufferSize",
                       frame_bytes * 3);
 
@@ -213,22 +237,26 @@ bool GigEVisionCapture::ConfigureTrigger(CameraHandle& cam, bool hardware) {
 // ---------------------------------------------------------------------------
 // Acquisition control
 // ---------------------------------------------------------------------------
-bool GigEVisionCapture::StartAcquisition(CameraID cam_id) {
-    auto& cam = cameras_[CamIndex(cam_id)];
+bool GigEVisionCapture::StartAcquisition(CameraID cam_id, int unit) {
+    int idx = FindSlot(cam_id, unit);
+    if (idx < 0) return false;
+    auto& cam = *cameras_[idx];
     if (!cam.handle) return false;
 
     int ret = MV_CC_StartGrabbing(cam.handle);
     if (ret != MV_OK) {
-        fprintf(stderr, "[GigECapture] StartGrabbing CCD%d failed: 0x%08X\n",
-                static_cast<int>(cam_id), ret);
+        fprintf(stderr, "[GigECapture] StartGrabbing CCD%d/%d failed: 0x%08X\n",
+                static_cast<int>(cam_id), unit, ret);
         return false;
     }
     cam.acquiring.store(true, std::memory_order_release);
     return true;
 }
 
-bool GigEVisionCapture::StopAcquisition(CameraID cam_id) {
-    auto& cam = cameras_[CamIndex(cam_id)];
+bool GigEVisionCapture::StopAcquisition(CameraID cam_id, int unit) {
+    int idx = FindSlot(cam_id, unit);
+    if (idx < 0) return false;
+    auto& cam = *cameras_[idx];
     if (!cam.handle || !cam.acquiring.load(std::memory_order_acquire))
         return true;
 
@@ -238,23 +266,30 @@ bool GigEVisionCapture::StopAcquisition(CameraID cam_id) {
 }
 
 void GigEVisionCapture::StopAll() {
-    for (int i = 0; i < kMaxCameras; ++i)
-        StopAcquisition(static_cast<CameraID>(i + 1));
+    for (auto& cam : cameras_) {
+        if (cam) StopAcquisition(cam->config.id, cam->config.unit);
+    }
 }
 
-bool GigEVisionCapture::SetTriggerMode(CameraID cam_id, bool hardware) {
-    auto& cam = cameras_[CamIndex(cam_id)];
+bool GigEVisionCapture::SetTriggerMode(CameraID cam_id, int unit, bool hardware) {
+    int idx = FindSlot(cam_id, unit);
+    if (idx < 0) return false;
+    auto& cam = *cameras_[idx];
     return cam.handle && ConfigureTrigger(cam, hardware);
 }
 
-bool GigEVisionCapture::SetExposure(CameraID cam_id, float exposure_us) {
-    auto& cam = cameras_[CamIndex(cam_id)];
+bool GigEVisionCapture::SetExposure(CameraID cam_id, int unit, float exposure_us) {
+    int idx = FindSlot(cam_id, unit);
+    if (idx < 0) return false;
+    auto& cam = *cameras_[idx];
     if (!cam.handle) return false;
     return MV_CC_SetFloatValue(cam.handle, "ExposureTime", exposure_us) == MV_OK;
 }
 
-void GigEVisionCapture::RegisterFrameCallback(CameraID cam_id, FrameCallback cb) {
-    cameras_[CamIndex(cam_id)].callback = std::move(cb);
+void GigEVisionCapture::RegisterFrameCallback(CameraID cam_id, int unit, FrameCallback cb) {
+    int idx = FindSlot(cam_id, unit);
+    if (idx < 0) return;
+    cameras_[idx]->callback = std::move(cb);
 }
 
 // ---------------------------------------------------------------------------
@@ -270,30 +305,25 @@ void __stdcall GigEVisionCapture::SdkFrameCallback(
     uint64_t ts = pFrameInfo->nDevTimeStampHigh;
     ts = (ts << 32) | pFrameInfo->nDevTimeStampLow;
 
-    // Zero-copy wrap for mono8; otherwise convert via OpenCV
-    cv::Mat frame;
-    if (pFrameInfo->enPixelType == PixelType_Gvsp_Mono8) {
-        frame = cv::Mat(pFrameInfo->nHeight, pFrameInfo->nWidth,
-                        CV_8UC1, pData).clone();
-    } else {
-        // Bayer → BGR conversion is deferred to ImagePreprocessor;
-        // here we just copy the raw Bayer payload.
-        frame = cv::Mat(pFrameInfo->nHeight, pFrameInfo->nWidth,
-                        CV_8UC1, pData).clone();
-    }
+    // Mono8 and raw Bayer payloads are both single-channel 8-bit; Bayer → BGR
+    // conversion is deferred to ImagePreprocessor.
+    cv::Mat frame = cv::Mat(pFrameInfo->nHeight, pFrameInfo->nWidth,
+                            CV_8UC1, pData).clone();
 
     cam->ring.try_push(frame, ts);
 
     if (cam->callback) {
-        cam->callback(cam->config.id, ts, frame);
+        cam->callback(cam->config.id, cam->config.unit, ts, frame);
     }
 }
 
 // ---------------------------------------------------------------------------
 // Blocking frame retrieval with polling timeout
 // ---------------------------------------------------------------------------
-cv::Mat GigEVisionCapture::GetFrame(CameraID cam_id, int timeout_ms) {
-    auto& cam = cameras_[CamIndex(cam_id)];
+cv::Mat GigEVisionCapture::GetFrame(CameraID cam_id, int unit, int timeout_ms) {
+    int idx = FindSlot(cam_id, unit);
+    if (idx < 0) return {};
+    auto& cam = *cameras_[idx];
     cv::Mat frame;
     uint64_t ts;
 
@@ -328,8 +358,6 @@ cv::Mat GigEVisionCapture::ConvertToMat(unsigned char* data,
     cvt.pDstBuffer = dst_buf.data();
     cvt.nDstBufferSize = dst_size;
 
-    // ConvertToMat is only called on-demand; the primary path uses
-    // deferred demosaicing in ImagePreprocessor for better control.
     cv::Mat result;
     if (target_fmt == PixelType_Gvsp_BGR8_Packed) {
         result = cv::Mat(info.nHeight, info.nWidth, CV_8UC3);
