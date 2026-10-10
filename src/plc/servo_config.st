@@ -1,6 +1,7 @@
 (* ==========================================================================
  * Program:     SERVO_CONFIG
- * Description: 8-Axis Servo Drive Configuration and Homing Sequences
+ * Description: 15-Axis Servo Drive Configuration and Homing Sequences
+ * Author:      Rongxuan Zhou
  * Drives:      Mitsubishi MR-J5-G series via CC-Link IE Field
  * Network:     CC-Link IE Field 1 Gbps, 0.5 ms communication cycle
  * Motion:      Position mode (CP), electronic gear via drive parameters
@@ -58,9 +59,9 @@ END_TYPE
 
 (* ---- Variables --------------------------------------------------------- *)
 VAR
-    AXIS_CFG         : ARRAY[1..8] OF ST_AXIS_CONFIG;
-    AXIS_STAT        : ARRAY[1..8] OF ST_AXIS_STATUS;
-    HOME_STATE       : ARRAY[1..8] OF E_HOME_STATE;
+    AXIS_CFG         : ARRAY[1..15] OF ST_AXIS_CONFIG;
+    AXIS_STAT        : ARRAY[1..15] OF ST_AXIS_STATUS;
+    HOME_STATE       : ARRAY[1..15] OF E_HOME_STATE;
     HOME_REQUEST     : BOOL;           (* Triggers all-axis homing sequence *)
     HOME_AXIS_INDEX  : USINT := 1;     (* Sequential homing: one axis at a time *)
     ALL_AXES_HOMED   : BOOL;
@@ -79,7 +80,7 @@ END_VAR
 (* Electronic gear: (GEAR_NUM / GEAR_DEN) * ENCODER_PPR = pulses per mm     *)
 (* ======================================================================== *)
 
-(* --- Axis 1: Transfer 1 (basket -> CSE loader) --- *)
+(* --- Axis 1: Transfer 1 (pitch-change mechanism -> lighting-check nest) --- *)
 (* Mitsubishi HK-KT23W, 200W, ball screw driven linear slide *)
 AXIS_CFG[1].AXIS_NAME       := 'TRANSFER_1';
 AXIS_CFG[1].MOTION_TYPE     := 0;          (* Linear *)
@@ -100,7 +101,7 @@ AXIS_CFG[1].SW_LIMIT_NEG    := -1.0;
 AXIS_CFG[1].IN_POS_BAND     := 0.005;      (* 5 um *)
 AXIS_CFG[1].TORQUE_LIMIT    := 100.0;
 
-(* --- Axis 2: Transfer 2 (CSE -> pitch change) --- *)
+(* --- Axis 2: Transfer 2 (lighting nest -> Transfer 3; CCD#3 fires on the fly) --- *)
 AXIS_CFG[2].AXIS_NAME       := 'TRANSFER_2';
 AXIS_CFG[2].MOTION_TYPE     := 0;
 AXIS_CFG[2].GEAR_NUM        := 1;
@@ -120,7 +121,7 @@ AXIS_CFG[2].SW_LIMIT_NEG    := -1.0;
 AXIS_CFG[2].IN_POS_BAND     := 0.005;
 AXIS_CFG[2].TORQUE_LIMIT    := 100.0;
 
-(* --- Axis 3: Transfer 3 (pitch change -> CCD4) --- *)
+(* --- Axis 3: Transfer 3 (top-check shuttle under CCD#1) --- *)
 AXIS_CFG[3].AXIS_NAME       := 'TRANSFER_3';
 AXIS_CFG[3].MOTION_TYPE     := 0;
 AXIS_CFG[3].GEAR_NUM        := 1;
@@ -140,7 +141,7 @@ AXIS_CFG[3].SW_LIMIT_NEG    := -1.0;
 AXIS_CFG[3].IN_POS_BAND     := 0.005;
 AXIS_CFG[3].TORQUE_LIMIT    := 100.0;
 
-(* --- Axis 4: Transfer 4 (CCD4 -> CCD3) --- *)
+(* --- Axis 4: Transfer 4 (Transfer 3 -> side-check nests, theta units 7-10 on the head) --- *)
 AXIS_CFG[4].AXIS_NAME       := 'TRANSFER_4';
 AXIS_CFG[4].MOTION_TYPE     := 0;
 AXIS_CFG[4].GEAR_NUM        := 1;
@@ -160,7 +161,7 @@ AXIS_CFG[4].SW_LIMIT_NEG    := -1.0;
 AXIS_CFG[4].IN_POS_BAND     := 0.005;
 AXIS_CFG[4].TORQUE_LIMIT    := 100.0;
 
-(* --- Axis 5: Transfer 5 (CCD3 -> CCD1/orientation) --- *)
+(* --- Axis 5: Transfer 5 (side-check nests -> output tray / NG belt) --- *)
 AXIS_CFG[5].AXIS_NAME       := 'TRANSFER_5';
 AXIS_CFG[5].MOTION_TYPE     := 0;
 AXIS_CFG[5].GEAR_NUM        := 1;
@@ -180,7 +181,7 @@ AXIS_CFG[5].SW_LIMIT_NEG    := -1.0;
 AXIS_CFG[5].IN_POS_BAND     := 0.003;      (* Tighter: orientation station *)
 AXIS_CFG[5].TORQUE_LIMIT    := 80.0;
 
-(* --- Axis 6: Transfer 6 (CCD2 -> unload) --- *)
+(* --- Axis 6: Transfer 6 (NG belt holder bar -> NG tray / OK tray) --- *)
 AXIS_CFG[6].AXIS_NAME       := 'TRANSFER_6';
 AXIS_CFG[6].MOTION_TYPE     := 0;
 AXIS_CFG[6].GEAR_NUM        := 1;
@@ -200,9 +201,10 @@ AXIS_CFG[6].SW_LIMIT_NEG    := -1.0;
 AXIS_CFG[6].IN_POS_BAND     := 0.005;
 AXIS_CFG[6].TORQUE_LIMIT    := 100.0;
 
-(* --- Axis 7: Orientation Compensation (rotary, direct-drive) --- *)
-(* Mitsubishi HK-KT13, 100W, direct-drive rotary table *)
-AXIS_CFG[7].AXIS_NAME       := 'ORIENT_COMP';
+(* --- Axes 7-10: Orientation compensation theta units, one per CSE on the
+       Transfer 4 head (spec slide 25). Axis 7 written out, 8-10 copied below. --- *)
+(* Mitsubishi HK-KT13, 100W, 72:1 harmonic drive *)
+AXIS_CFG[7].AXIS_NAME       := 'THETA_1';
 AXIS_CFG[7].MOTION_TYPE     := 1;          (* Rotary *)
 AXIS_CFG[7].GEAR_NUM        := 1;
 AXIS_CFG[7].GEAR_DEN        := 72;         (* 72:1 harmonic drive reduction *)
@@ -221,49 +223,88 @@ AXIS_CFG[7].SW_LIMIT_NEG    := -180.0;
 AXIS_CFG[7].IN_POS_BAND     := 0.01;       (* 0.01 deg = 36 arcsec *)
 AXIS_CFG[7].TORQUE_LIMIT    := 50.0;       (* Low inertia load *)
 
-(* --- Axis 8: CCD3 Side-Check 360-deg Rotation --- *)
-(* Mitsubishi HK-KT23W, 200W, direct-drive continuous rotation *)
-AXIS_CFG[8].AXIS_NAME       := 'SIDE_CHECK_ROT';
-AXIS_CFG[8].MOTION_TYPE     := 1;          (* Rotary *)
-AXIS_CFG[8].GEAR_NUM        := 1;
-AXIS_CFG[8].GEAR_DEN        := 50;         (* 50:1 worm gear for backlash-free *)
-AXIS_CFG[8].ENCODER_PPR     := 4194304;
-AXIS_CFG[8].BALL_SCREW_LEAD := 0.0;
-AXIS_CFG[8].MAX_VELOCITY    := 1080.0;     (* deg/s - 3 rev/s max *)
-AXIS_CFG[8].MAX_ACCEL       := 7200.0;
-AXIS_CFG[8].MAX_DECEL       := 7200.0;
-AXIS_CFG[8].JOG_VELOCITY    := 30.0;
-AXIS_CFG[8].HOME_VELOCITY   := 60.0;
-AXIS_CFG[8].HOME_CREEP      := 5.0;
-AXIS_CFG[8].HOME_OFFSET     := 0.0;
-AXIS_CFG[8].HOME_DIRECTION  := TRUE;
-AXIS_CFG[8].SW_LIMIT_POS    := 99999.0;    (* No limit: continuous rotation *)
-AXIS_CFG[8].SW_LIMIT_NEG    := -99999.0;
-AXIS_CFG[8].IN_POS_BAND     := 0.05;       (* Relaxed: full-revolution scan *)
-AXIS_CFG[8].TORQUE_LIMIT    := 80.0;
+(* --- Axes 11-14: Side-check rotators, one per CSE (spec slide 26), 360 deg
+       sweep with 36 CCD#2 frames. Axis 11 written out, 12-14 copied below. --- *)
+(* Mitsubishi HK-KT23W, 200W, 50:1 worm gear *)
+AXIS_CFG[11].AXIS_NAME      := 'SIDE_ROT_1';
+AXIS_CFG[11].MOTION_TYPE     := 1;          (* Rotary *)
+AXIS_CFG[11].GEAR_NUM        := 1;
+AXIS_CFG[11].GEAR_DEN        := 50;         (* 50:1 worm gear for backlash-free *)
+AXIS_CFG[11].ENCODER_PPR     := 4194304;
+AXIS_CFG[11].BALL_SCREW_LEAD := 0.0;
+AXIS_CFG[11].MAX_VELOCITY    := 1080.0;     (* deg/s - 3 rev/s max *)
+AXIS_CFG[11].MAX_ACCEL       := 7200.0;
+AXIS_CFG[11].MAX_DECEL       := 7200.0;
+AXIS_CFG[11].JOG_VELOCITY    := 30.0;
+AXIS_CFG[11].HOME_VELOCITY   := 60.0;
+AXIS_CFG[11].HOME_CREEP      := 5.0;
+AXIS_CFG[11].HOME_OFFSET     := 0.0;
+AXIS_CFG[11].HOME_DIRECTION  := TRUE;
+AXIS_CFG[11].SW_LIMIT_POS    := 99999.0;    (* No limit: continuous rotation *)
+AXIS_CFG[11].SW_LIMIT_NEG    := -99999.0;
+AXIS_CFG[11].IN_POS_BAND     := 0.05;       (* Relaxed: full-revolution scan *)
+AXIS_CFG[11].TORQUE_LIMIT    := 80.0;
+
+
+(* --- Axes 8-10: theta units 2-4 share the theta configuration --- *)
+FOR i := 8 TO 10 DO
+    AXIS_CFG[i] := AXIS_CFG[7];
+END_FOR;
+AXIS_CFG[8].AXIS_NAME       := 'THETA_2';
+AXIS_CFG[9].AXIS_NAME       := 'THETA_3';
+AXIS_CFG[10].AXIS_NAME      := 'THETA_4';
+
+(* --- Axes 12-14: rotators 2-4 share the rotator configuration --- *)
+FOR i := 12 TO 14 DO
+    AXIS_CFG[i] := AXIS_CFG[11];
+END_FOR;
+AXIS_CFG[12].AXIS_NAME      := 'SIDE_ROT_2';
+AXIS_CFG[13].AXIS_NAME      := 'SIDE_ROT_3';
+AXIS_CFG[14].AXIS_NAME      := 'SIDE_ROT_4';
+
+(* --- Axis 15: Pitch-change e-cylinder (spec slide 19), 2.54 mm -> 12 mm pitch --- *)
+(* Mitsubishi HK-KT13, 100W, 5 mm lead electric cylinder *)
+AXIS_CFG[15].AXIS_NAME      := 'PITCH_ECYL';
+AXIS_CFG[15].MOTION_TYPE    := 0;          (* Linear *)
+AXIS_CFG[15].GEAR_NUM       := 1;
+AXIS_CFG[15].GEAR_DEN       := 1;
+AXIS_CFG[15].ENCODER_PPR    := 4194304;
+AXIS_CFG[15].BALL_SCREW_LEAD := 5.0;
+AXIS_CFG[15].MAX_VELOCITY   := 200.0;
+AXIS_CFG[15].MAX_ACCEL      := 2000.0;
+AXIS_CFG[15].MAX_DECEL      := 2000.0;
+AXIS_CFG[15].JOG_VELOCITY   := 10.0;
+AXIS_CFG[15].HOME_VELOCITY  := 20.0;
+AXIS_CFG[15].HOME_CREEP     := 2.0;
+AXIS_CFG[15].HOME_OFFSET    := 0.5;
+AXIS_CFG[15].HOME_DIRECTION := FALSE;
+AXIS_CFG[15].SW_LIMIT_POS   := 15.0;
+AXIS_CFG[15].SW_LIMIT_NEG   := -1.0;
+AXIS_CFG[15].IN_POS_BAND    := 0.01;
+AXIS_CFG[15].TORQUE_LIMIT   := 60.0;
 
 (* ======================================================================== *)
 (* HOMING SEQUENCE STATE MACHINE                                            *)
 (* Sequential homing: axes home one at a time to prevent collision.          *)
-(* Order: 7 (orient) -> 8 (rotation) -> 1 -> 2 -> 3 -> 4 -> 5 -> 6        *)
+(* Order: rotary 7-14 -> pitch 15 -> transfers 1 -> 2 -> 3 -> 4 -> 5 -> 6   *)
 (* Rotary axes home first as they have no collision risk with linear axes.  *)
 (* ======================================================================== *)
 
 VAR CONSTANT
-    HOME_ORDER : ARRAY[1..8] OF USINT := [7, 8, 1, 2, 3, 4, 5, 6];
+    HOME_ORDER : ARRAY[1..15] OF USINT := [7, 8, 9, 10, 11, 12, 13, 14, 15, 1, 2, 3, 4, 5, 6];
 END_VAR
 
 RT_HOME_REQ(CLK := HOME_REQUEST);
 IF RT_HOME_REQ.Q THEN
     HOME_AXIS_INDEX := 1;
-    FOR i := 1 TO 8 DO
+    FOR i := 1 TO 15 DO
         HOME_STATE[i] := HOME_IDLE;
         AXIS_STAT[i].IS_HOMED := FALSE;
     END_FOR;
 END_IF;
 
 (* Process current homing axis *)
-IF HOME_AXIS_INDEX >= 1 AND HOME_AXIS_INDEX <= 8 THEN
+IF HOME_AXIS_INDEX >= 1 AND HOME_AXIS_INDEX <= 15 THEN
 
     CASE HOME_STATE[HOME_ORDER[HOME_AXIS_INDEX]] OF
 
@@ -313,7 +354,7 @@ IF HOME_AXIS_INDEX >= 1 AND HOME_AXIS_INDEX <= 8 THEN
         HOME_COMPLETE:
             (* Advance to next axis in homing order *)
             HOME_TIMER(IN := FALSE);
-            IF HOME_AXIS_INDEX < 8 THEN
+            IF HOME_AXIS_INDEX < 15 THEN
                 HOME_AXIS_INDEX := HOME_AXIS_INDEX + 1;
                 HOME_STATE[HOME_ORDER[HOME_AXIS_INDEX]] := HOME_SEEK_SWITCH;
             END_IF;
@@ -330,7 +371,7 @@ END_IF;
 
 (* --- Aggregate homed status --------------------------------------------- *)
 ALL_AXES_HOMED := TRUE;
-FOR i := 1 TO 8 DO
+FOR i := 1 TO 15 DO
     IF NOT AXIS_STAT[i].IS_HOMED THEN
         ALL_AXES_HOMED := FALSE;
     END_IF;
@@ -353,8 +394,10 @@ END_FOR;
 (*   RWr5: Alarm code                                                       *)
 (*                                                                          *)
 (* Station assignment (CC-Link IE Field):                                   *)
-(*   Station 2, Slots 0-1: Axes 1-4 (transfer drives)                      *)
-(*   Station 3, Slots 0-1: Axes 5-8 (transfer + rotary drives)             *)
+(*   Station 2, Slots 0-1: Axes 1-4   (transfer drives)                    *)
+(*   Station 3, Slots 0-1: Axes 5-8   (transfers 5-6, theta 1-2)           *)
+(*   Station 4, Slots 0-1: Axes 9-12  (theta 3-4, rotators 1-2)            *)
+(*   Station 5, Slots 0-1: Axes 13-15 (rotators 3-4, pitch e-cylinder)     *)
 (* ======================================================================== *)
 
 END_PROGRAM
