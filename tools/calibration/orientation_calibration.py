@@ -26,8 +26,8 @@ from typing import Optional, Tuple
 
 import numpy as np
 
-from src.data_types.defect_types import CameraID
-from src.global_variables.system_config import THRESHOLDS
+from tools.analysis.defect_types import CameraID
+from tools.analysis.system_config import THRESHOLDS
 
 logger = logging.getLogger(__name__)
 

@@ -23,8 +23,8 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
-from src.data_types.defect_types import CameraID
-from src.global_variables.system_config import CAMERA_SPECS, CameraSpec
+from tools.analysis.defect_types import CameraID
+from tools.analysis.system_config import CAMERA_SPECS, CameraSpec
 
 logger = logging.getLogger(__name__)
 

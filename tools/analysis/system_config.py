@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, Tuple
 
-from src.data_types.defect_types import CameraID
+from tools.analysis.defect_types import CameraID
 
 
 # ---------------------------------------------------------------------------

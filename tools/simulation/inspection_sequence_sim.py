@@ -29,25 +29,25 @@ from typing import Callable, Dict, List, Optional
 
 import numpy as np
 
-from src.data_types.defect_types import (
+from tools.analysis.defect_types import (
     CameraID,
     DefectDetail,
     InspectionResult,
     ProcessStep,
 )
-from src.global_variables.system_config import (
+from tools.analysis.system_config import (
     STEP_TIME_BUDGET,
     TARGET_CYCLE_TIME_SEC,
     UNITS_PER_PICK_CYCLE,
 )
-from src.material_handling.PitchChanger import HolderMode, PitchChanger
-from src.material_handling.RobotController import NozzleID, RobotController, RobotPose
-from src.material_handling.TransferControl import AxisID, TransferControl
-from src.ng_management.NGSorter import NGDisposition, NGSorter
-from src.vision.CameraController import CameraController
-from src.vision.DefectClassifier import DefectClassifier
-from src.vision.LightingCheckAnalyzer import LightingCheckAnalyzer
-from src.vision.OrientationDetector import OrientationDetector
+from tools.simulation.pitch_change_sim import HolderMode, PitchChanger
+from tools.simulation.robot_control_sim import NozzleID, RobotController, RobotPose
+from tools.simulation.transfer_control_sim import AxisID, TransferControl
+from tools.analysis.ng_statistics import NGDisposition, NGSorter
+from tools.calibration.camera_calibration import CameraController
+from tools.analysis.defect_classification_tool import DefectClassifier
+from tools.analysis.lighting_check_analysis import LightingCheckAnalyzer
+from tools.calibration.orientation_calibration import OrientationDetector
 
 logger = logging.getLogger(__name__)
 

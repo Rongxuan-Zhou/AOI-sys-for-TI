@@ -3,8 +3,8 @@ Data type definitions for the TI CSE AOI inspection system.
 
 Defines all enumerations and dataclasses used across inspection, vision,
 material handling, and NG management subsystems. The 19 defect categories
-are organized into three severity tiers: Function (critical), Cosmetic,
-and Assembly.
+of spec V1.4 (slide 8) plus the two inner-staining-residue sub-checks
+mirror src/vision/DefectTypes.h.
 
 Author: Rongxuan Zhou
 """
@@ -59,19 +59,55 @@ class ProcessStep(Enum):
 
 class DefectSeverity(Enum):
     """Severity classification for defect types."""
-    CRITICAL = "critical"       # Function defects -- unit is non-functional
-    COSMETIC = "cosmetic"       # Visual defects -- unit functions but fails appearance spec
-    ASSEMBLY = "assembly"       # Assembly process defects -- rework or scrap
+    CRITICAL = "critical"       # purple items on spec slide 8: lighting check, crack, broken, misalignment
+    COSMETIC = "cosmetic"       # cosmetic group -- unit functions but fails appearance spec
+    ASSEMBLY = "assembly"       # function / assembly items that are not critical (MAJOR in the C++ core)
+
+
+class DefectGroup(Enum):
+    """Grouping of spec V1.4 slide 8 (mirrors aoi::DefectGroup)."""
+    FUNCTION = "function"
+    COSMETIC = "cosmetic"
+    ASSEMBLY = "assembly"
+    INNER_RESIDUE = "inner_residue"
 
 
 class DefectType(Enum):
     """
-    19 defect categories detected by the AOI system.
+    Defect categories of spec V1.4 (slide 8) in spec order, mirroring
+    aoi::DefectType in src/vision/DefectTypes.h. The value is the snake_case
+    name used by the YAML configs; the PLC DEFECT_CODE is index + 1.
 
-    Naming convention: <SEVERITY_PREFIX>_<DEFECT_NAME>
-    F_ = Function (critical), C_ = Cosmetic, A_ = Assembly
+    The pre-V1.4 member names (F_CRACK, A_LIGHT_LEAKAGE, ...) are kept as
+    aliases so the offline tools keep working; new code uses the spec names.
     """
-    # -- Function defects (8) -- detected on CCD1/CCD3 --
+    # -- Function (9) --
+    LIGHTING_CHECK = "lighting_check"
+    CRACK = "crack"
+    BROKEN = "broken"
+    EPOXY_EXPOSAL = "epoxy_exposal"
+    PIN_MISSING = "pin_missing"
+    ELECTRICAL_CONTAMINATION = "electrical_contamination"
+    GOLD_EXPOSAL = "gold_exposal"
+    INSUFFICIENT_EPOXY = "insufficient_epoxy"
+    EPOXY_OVERFLOW = "epoxy_overflow"
+    # -- Cosmetic (4) --
+    DYEING_CONTAMINATION = "dyeing_contamination"
+    NON_ELECTRICAL_CONTAMINATION = "non_electrical_contamination"
+    NO_CODE = "no_code"
+    CODE_BLUR = "code_blur"
+    # -- Assembly (6) --
+    PIN_BENT = "pin_bent"
+    PIN_OXIDIZED = "pin_oxidized"
+    PIN_BUR = "pin_bur"
+    PIN_MIS_CUT = "pin_mis_cut"
+    EPOXY_HIGHER_THAN_CERAMIC = "epoxy_higher_than_ceramic"
+    MISALIGNMENT = "misalignment"
+    # -- Inner staining residue (lighting-check sub-checks) --
+    STAINING_ON_EDGE = "staining_on_edge"
+    YELLOW_GLASS_CEMENT = "yellow_glass_cement"
+
+    # -- deprecated aliases (pre-V1.4 names) --
     F_CRACK = "crack"
     F_BROKEN = "broken"
     F_EPOXY_EXPOSAL = "epoxy_exposal"
@@ -80,45 +116,50 @@ class DefectType(Enum):
     F_PIN_BENT = "pin_bent"
     F_PIN_OXIDIZED = "pin_oxidized"
     F_PIN_MIS_CUT = "pin_mis_cut"
-
-    # -- Cosmetic defects (4) --
     C_DYEING_CONTAMINATION = "dyeing_contamination"
     C_NON_ELECTRICAL_CONTAMINATION = "non_electrical_contamination"
-    C_STAINING = "staining"
+    C_STAINING = "staining_on_edge"
     C_CODE_BLUR = "code_blur"
-
-    # -- Assembly defects (5+) --
     A_NO_CODE = "no_code"
     A_MISALIGNMENT = "misalignment"
     A_PIN_BUR = "pin_bur"
     A_GOLD_EXPOSAL = "gold_exposal"
-    A_LIGHT_LEAKAGE = "light_leakage"
+    A_LIGHT_LEAKAGE = "lighting_check"
     A_YELLOW_GLASS_CEMENT = "yellow_glass_cement"
-    A_EDGE_STAINING = "edge_staining"
+    A_EDGE_STAINING = "staining_on_edge"
 
 
-# Mapping from DefectType to its severity tier
-DEFECT_SEVERITY_MAP: Dict[DefectType, DefectSeverity] = {
-    DefectType.F_CRACK: DefectSeverity.CRITICAL,
-    DefectType.F_BROKEN: DefectSeverity.CRITICAL,
-    DefectType.F_EPOXY_EXPOSAL: DefectSeverity.CRITICAL,
-    DefectType.F_INSUFFICIENT_EPOXY: DefectSeverity.CRITICAL,
-    DefectType.F_EPOXY_OVERFLOW: DefectSeverity.CRITICAL,
-    DefectType.F_PIN_BENT: DefectSeverity.CRITICAL,
-    DefectType.F_PIN_OXIDIZED: DefectSeverity.CRITICAL,
-    DefectType.F_PIN_MIS_CUT: DefectSeverity.CRITICAL,
-    DefectType.C_DYEING_CONTAMINATION: DefectSeverity.COSMETIC,
-    DefectType.C_NON_ELECTRICAL_CONTAMINATION: DefectSeverity.COSMETIC,
-    DefectType.C_STAINING: DefectSeverity.COSMETIC,
-    DefectType.C_CODE_BLUR: DefectSeverity.COSMETIC,
-    DefectType.A_NO_CODE: DefectSeverity.ASSEMBLY,
-    DefectType.A_MISALIGNMENT: DefectSeverity.ASSEMBLY,
-    DefectType.A_PIN_BUR: DefectSeverity.ASSEMBLY,
-    DefectType.A_GOLD_EXPOSAL: DefectSeverity.ASSEMBLY,
-    DefectType.A_LIGHT_LEAKAGE: DefectSeverity.ASSEMBLY,
-    DefectType.A_YELLOW_GLASS_CEMENT: DefectSeverity.ASSEMBLY,
-    DefectType.A_EDGE_STAINING: DefectSeverity.ASSEMBLY,
+DEFECT_GROUP_MAP: Dict[DefectType, DefectGroup] = {
+    **{t: DefectGroup.FUNCTION for t in (
+        DefectType.LIGHTING_CHECK, DefectType.CRACK, DefectType.BROKEN, DefectType.EPOXY_EXPOSAL,
+        DefectType.PIN_MISSING, DefectType.ELECTRICAL_CONTAMINATION, DefectType.GOLD_EXPOSAL,
+        DefectType.INSUFFICIENT_EPOXY, DefectType.EPOXY_OVERFLOW)},
+    **{t: DefectGroup.COSMETIC for t in (
+        DefectType.DYEING_CONTAMINATION, DefectType.NON_ELECTRICAL_CONTAMINATION,
+        DefectType.NO_CODE, DefectType.CODE_BLUR)},
+    **{t: DefectGroup.ASSEMBLY for t in (
+        DefectType.PIN_BENT, DefectType.PIN_OXIDIZED, DefectType.PIN_BUR, DefectType.PIN_MIS_CUT,
+        DefectType.EPOXY_HIGHER_THAN_CERAMIC, DefectType.MISALIGNMENT)},
+    DefectType.STAINING_ON_EDGE: DefectGroup.INNER_RESIDUE,
+    DefectType.YELLOW_GLASS_CEMENT: DefectGroup.INNER_RESIDUE,
 }
+
+CRITICAL_DEFECTS = frozenset({
+    DefectType.LIGHTING_CHECK, DefectType.CRACK, DefectType.BROKEN, DefectType.MISALIGNMENT,
+})
+
+# Mapping from DefectType to its severity tier (see DefectSeverity)
+DEFECT_SEVERITY_MAP: Dict[DefectType, DefectSeverity] = {
+    t: (DefectSeverity.CRITICAL if t in CRITICAL_DEFECTS
+        else DefectSeverity.COSMETIC if DEFECT_GROUP_MAP[t] in (DefectGroup.COSMETIC, DefectGroup.INNER_RESIDUE)
+        else DefectSeverity.ASSEMBLY)
+    for t in DefectType
+}
+
+
+def plc_defect_code(t: DefectType) -> int:
+    """DEFECT_CODE written by the IPC into the PLC: 0 = OK, 1..21 = spec order."""
+    return list(DefectType).index(t) + 1
 
 
 # ---------------------------------------------------------------------------

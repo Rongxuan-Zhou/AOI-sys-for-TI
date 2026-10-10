@@ -79,29 +79,42 @@ image_preprocessing:
   clahe_tile_size: [8, 8]
 
 defects_detected:
+  # spec V1.4 slide 9: bottom side check + misalignment (slides 32, 33, 36)
   - crack
   - broken
-  - epoxy_exposal
-  - epoxy_overflow
-  - staining_on_edge
+  - misalignment
+  - electrical_contamination
+  - non_electrical_contamination
+  - dyeing_contamination
 
+# Keys mirror aoi::DetectionParams / LocatorParams, production scale.
 inspection_thresholds:
+  locator:
+    min_disc_radius_px: 300
+    min_otsu_thresh: 30
+    disc_fg_thresh: 40                  # amber epoxy and holes stay inside the disc
+    notch_width_deg: 7.0
+    notch_depth_px: 36
+    fit_inlier_ratio: 0.03
+    interior_margin_px: 60
+  mm_per_px_ccd123: 0.0115
+  fixture_center_ccd3: [1224, 1024]     # calibrated per station
+  misalign_max_offset_mm: 0.15
+  epoxy_region:                         # structure mask: the bottom-side epoxy "banana"
+    epoxy_hue_low: 8
+    epoxy_hue_high: 30
+    epoxy_sat_min: 50
   crack:
-    min_length_mm: 0.05
-    min_width_mm: 0.01
+    crack_blackhat_kernel_px: 41
+    crack_blackhat_thresh: 25
+    crack_aspect_min: 4.0
+    crack_min_length_px: 90
     severity: critical
   broken:
-    min_area_mm2: 0.1
+    broken_depth_px: 20
     severity: critical
-  epoxy_exposal:
-    min_area_mm2: 0.02
-    severity: major
-  epoxy_overflow:
-    max_protrusion_mm: 0.10
-    boundary_tolerance_mm: 0.05
-    severity: major
-  staining_on_edge:
-    min_area_mm2: 0.01
-    edge_band_width_mm: 0.5
-    contrast_threshold: 25
-    severity: minor
+  contamination:
+    contam_area_min_px: 300
+    dyeing_sat_min: 70
+    electrical_dark_max: 120
+    electrical_texture_min: 20.0
