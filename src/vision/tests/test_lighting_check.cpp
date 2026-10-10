@@ -119,3 +119,23 @@ TEST(Lighting, HalfDarkAnnulusPasses) {
         EXPECT_FALSE(Has(r.defects, DefectType::LIGHTING_CHECK)) << dark_pct << "% dark: " << r.leak_area_px;
     }
 }
+
+// The polar unwrap has a seam at angle 0; a leak there must be found as reliably
+// as anywhere else (same blob, same area class).
+TEST(Lighting, LeakAtPolarSeamIsFound) {
+    LightingCheck lc;
+    int area_at_90 = 0, area_at_0 = 0;
+    for (float ang : {90.f, 0.f}) {
+        cv::Mat img = test::MakeLitAnnulus(800, 600, {400, 300}, 200.f, AMBER);
+        float a = ang * static_cast<float>(CV_PI) / 180.f;
+        cv::circle(img, cv::Point(cvRound(400 + 140 * std::cos(a)), cvRound(300 + 140 * std::sin(a))), 5,
+                   cv::Scalar(255, 255, 255), cv::FILLED, cv::LINE_AA);
+        LightingResult r = lc.Analyse(img);
+        int n = 0;
+        for (const auto& d : r.defects) if (d.type == DefectType::LIGHTING_CHECK) ++n;
+        EXPECT_EQ(n, 1) << "angle " << ang;
+        (ang == 90.f ? area_at_90 : area_at_0) = r.leak_area_px;
+    }
+    EXPECT_GT(area_at_0, 0);
+    EXPECT_NEAR(area_at_0, area_at_90, area_at_90 * 0.35);
+}

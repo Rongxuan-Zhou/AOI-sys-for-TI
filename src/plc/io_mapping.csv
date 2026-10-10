@@ -287,3 +287,5 @@ Y245,SERVO12_ENABLE,DO,Station4-Slot1,Side rotator 2 servo ON
 Y246,SERVO13_ENABLE,DO,Station5-Slot0,Side rotator 3 servo ON
 Y247,SERVO14_ENABLE,DO,Station5-Slot0,Side rotator 4 servo ON
 Y250,SERVO15_ENABLE,DO,Station5-Slot1,Pitch e-cylinder servo ON
+#
+# AXIS_STOP[1..15] is bit 1 of each drive's cyclic control word RWw0 (see servo_config.st), not a discrete output

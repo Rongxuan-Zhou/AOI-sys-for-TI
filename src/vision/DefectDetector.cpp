@@ -436,11 +436,12 @@ std::vector<DefectResult> DefectDetector::DetectPinsTop(const cv::Mat& bgr, cons
     cv::Mat k5 = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
     cv::morphologyEx(holes, holes, cv::MORPH_CLOSE, k5);   // fill the core cavity
 
-    // epoxy mask: saturated amber, not too bright
-    cv::Mat sat_ok, val_ok, epoxy;
-    cv::threshold(S, sat_ok, params_.epoxy_sat_min, 255, cv::THRESH_BINARY);
-    cv::threshold(V, val_ok, params_.epoxy_val_max, 255, cv::THRESH_BINARY_INV);
-    cv::bitwise_or(sat_ok, val_ok, epoxy);
+    // epoxy mask: amber hue, saturated, not too bright. The dark hole and the
+    // metallic core are unsaturated and must not count as epoxy, otherwise a
+    // nominal ring already measures ~1.8x its own area.
+    cv::Mat epoxy;
+    cv::inRange(hsv, cv::Scalar(params_.epoxy_hue_low, params_.epoxy_sat_min, 0),
+                cv::Scalar(params_.epoxy_hue_high, 255, params_.epoxy_val_max), epoxy);
     cv::bitwise_and(epoxy, g.disc_mask, epoxy);
     cv::Mat epoxy_labels;
     cv::connectedComponents(epoxy, epoxy_labels, 8, CV_32S);

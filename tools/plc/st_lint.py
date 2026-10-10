@@ -88,6 +88,8 @@ def lint_file(path):
             for name in REQUIRED_ERROR_RESETS:
                 if not re.search(r"\b" + name + r"(?:\[[^\]]*\])?\s*:=\s*FALSE\b", block):
                     findings.append(f"ST_ERROR does not reset {name}")
+            if not re.search(r"\bAXIS_STOP(?:\[[^\]]*\])?\s*:=\s*TRUE\b", block):
+                findings.append("ST_ERROR does not command AXIS_STOP")
     return findings
 
 

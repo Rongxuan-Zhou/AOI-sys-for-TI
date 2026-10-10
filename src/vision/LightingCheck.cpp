@@ -184,17 +184,28 @@ LightingResult LightingCheck::Analyse(const cv::Mat& bgr_in) const {
         return long_side / short_side <= p_.blob_aspect_max;
     };
 
-    auto extract = [&](const cv::Mat& mask, int area_min, int area_max, DefectType type,
+    // The unwrap has a seam at angle 0. Pad each mask on both sides with the
+    // wrapped columns so a blob straddling the seam is one contour; every blob
+    // then appears twice and the copy whose centre lies in [pad, W + pad) is kept.
+    const int pad = std::max(8, W / 36);
+    auto extract = [&](const cv::Mat& mask_in, int area_min, int area_max, DefectType type,
                        int& area_out, const char* label, float conf_scale) {
+        cv::Mat parts[3] = {mask_in.colRange(W - pad, W), mask_in, mask_in.colRange(0, pad)};
+        cv::Mat mask;
+        cv::hconcat(parts, 3, mask);
         std::vector<std::vector<cv::Point>> contours;
         cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
         for (const auto& ct : contours) {
+            cv::Rect pb = cv::boundingRect(ct);
+            float cx = pb.x + pb.width / 2.f;
+            if (cx < pad || cx >= W + pad) continue;      // the duplicate copy
+            pb.x -= pad;                                  // back to unpadded columns (may be < 0: wraps)
             double area = cv::contourArea(ct);
             if (area < area_min) continue;
             if (area_max > 0 && area > area_max) continue;
             if (!compact(ct)) continue;
             area_out += static_cast<int>(area);
-            cv::Rect bb = to_source_bbox(cv::boundingRect(ct));
+            cv::Rect bb = to_source_bbox(pb);
             float conf = static_cast<float>(area) / (conf_scale * area_min);
             res.defects.push_back({type, SeverityOf(type), std::clamp(conf, 0.f, 1.f), bb,
                                    CameraID::CCD4_INNER,

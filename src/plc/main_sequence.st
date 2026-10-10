@@ -148,6 +148,7 @@ VAR
     (* ---- servo axes (CC-Link IE Field cyclic) ----
        1-6 transfers, 7-10 theta units on Transfer 4, 11-14 side rotators, 15 pitch e-cylinder *)
     AXIS                : ARRAY[1..15] OF TYPE_AXIS_CMD;
+    AXIS_STOP           : ARRAY[1..15] OF BOOL;     (* drive control word: controlled stop *)
     AT_TARGET           : ARRAY[1..15] OF BOOL;     (* IN_POSITION confirmed by position compare *)
     ERROR_REQ           : BOOL;                     (* latched by the pre-CASE monitors *)
     ERROR_CODE_REQ      : INT := 0;
@@ -425,8 +426,9 @@ CASE CURRENT_STATE OF
         END_IF;
 
         CASE SUB_STEP OF
-            0:  (* push an empty basket to the collector *)
-                IF BASKET_AT_HOLDER AND BASKET_EMPTY THEN
+            0:  (* push the finished basket to the collector: empty by sensor,
+                   or all groups picked (the sensor may still see leftovers) *)
+                IF BASKET_AT_HOLDER AND (BASKET_EMPTY OR GROUPS_PICKED >= GROUPS_PER_BASKET) THEN
                     SOL_EMPTY_BASKET_PUSH := TRUE;
                     PUSH_TIMER(IN := TRUE, PT := T_PUSH);
                     IF PUSH_TIMER.Q THEN
@@ -1039,11 +1041,15 @@ CASE CURRENT_STATE OF
 
     (* ======================================================================= *)
     ST_ERROR:
-        (* Safe stop. Motion, vacuum, shade, belt and camera handshakes are
-           dropped. Holding-type outputs are kept so nothing falls:
+        (* Safe stop. Every axis gets a controlled stop (AXIS_STOP -> drive
+           control word), then motion, vacuum, shade, belt and camera handshakes
+           are dropped. Holding-type outputs are kept so nothing falls:
            SOL_BASKET_STACK_HOLD, SOL_HOLDING_BLOCK, SOL_L_TRIGGER,
            SOL_BLUE_HOLDER_CLOSE, SOL_FLIP_180, SOL_STACK_GRIPPER, SOL_NG_HOLDER_BAR. *)
         IF STATE_ENTRY THEN
+            FOR i := 1 TO 15 DO
+                AXIS_STOP[i] := TRUE;
+            END_FOR;
             FOR i := 1 TO 6 DO
                 SOL_TRANSFER_GRIP[i] := FALSE;
                 TRANSFER_ACTIVE[i] := FALSE;
@@ -1078,6 +1084,9 @@ CASE CURRENT_STATE OF
 
         (* operator acknowledges, then presses reset *)
         IF RT_RESET.Q AND ESTOP_OK AND SAFETY_GATE_CLOSED AND SERVO_STO_RELEASED THEN
+            FOR i := 1 TO 15 DO
+                AXIS_STOP[i] := FALSE;
+            END_FOR;
             LAST_ERROR_CODE := 0;
             CONSECUTIVE_NG := 0;
             NEXT_STATE := ST_IDLE;

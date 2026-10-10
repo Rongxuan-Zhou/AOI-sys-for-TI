@@ -95,3 +95,13 @@ TEST(TopSide, GoodPartPassesAtOtherNotchAngles) {
         for (const auto& x : r) ADD_FAILURE() << "notch " << notch << ": " << ToString(x.type) << " " << x.description;
     }
 }
+
+// The overflow measure must count epoxy only: with the hole included a nominal ring
+// already reads ~1.8x nominal and a provisional 2.5 ratio trips far too early.
+TEST(TopSide, NominalRingIsNotOverflowAtTightRatio) {
+    DetectionParams p = test::SyntheticParams();
+    p.epoxy_overflow_ratio = 1.5;
+    DefectDetector d(p);
+    EXPECT_FALSE(Has(d.Detect(CameraID::CCD1_TOP, TopPart()), DefectType::EPOXY_OVERFLOW));
+    EXPECT_TRUE(Has(d.Detect(CameraID::CCD1_TOP, TopPart(4, 1.f, 22.f)), DefectType::EPOXY_OVERFLOW));
+}
