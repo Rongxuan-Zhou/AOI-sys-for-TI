@@ -226,10 +226,117 @@ std::vector<DefectResult> DefectDetector::DetectCCD4(const cv::Mat& bgr) {
 // ---------------------------------------------------------------------------
 // Primitives — filled in by Tasks 4, 6, 7, 8
 // ---------------------------------------------------------------------------
-std::vector<DefectResult> DefectDetector::DetectCrack(const cv::Mat&, const CseGeometry&,
-                                                      const cv::Mat&, CameraID) { return {}; }
-std::vector<DefectResult> DefectDetector::DetectBroken(const CseGeometry&, CameraID) { return {}; }
-std::vector<DefectResult> DefectDetector::DetectMisalignment(const CseGeometry&, cv::Size, CameraID) { return {}; }
+// ---------------------------------------------------------------------------
+// CRACK — thin dark elongated structure inside the disc (slide 32)
+// ---------------------------------------------------------------------------
+std::vector<DefectResult> DefectDetector::DetectCrack(const cv::Mat& gray, const CseGeometry& g,
+                                                      const cv::Mat& exclude_mask, CameraID cam) {
+    std::vector<DefectResult> out;
+    cv::Mat roi_mask = locator_.InteriorMask(g);
+    if (roi_mask.empty()) return out;
+    if (!exclude_mask.empty()) {
+        cv::Mat not_excl;
+        cv::bitwise_not(exclude_mask, not_excl);
+        cv::bitwise_and(roi_mask, not_excl, roi_mask);
+    }
+
+    int k = params_.crack_blackhat_kernel_px | 1;
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(k, k));
+    cv::Mat blackhat;
+    cv::morphologyEx(gray, blackhat, cv::MORPH_BLACKHAT, kernel);
+
+    cv::Mat cand;
+    cv::threshold(blackhat, cand, params_.crack_blackhat_thresh, 255, cv::THRESH_BINARY);
+    cv::bitwise_and(cand, roi_mask, cand);
+
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(cand, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    for (const auto& c : contours) {
+        if (c.size() < 5) continue;
+        cv::RotatedRect rr = cv::minAreaRect(c);
+        float long_side = std::max(rr.size.width, rr.size.height);
+        float short_side = std::max(1.f, std::min(rr.size.width, rr.size.height));
+        if (long_side < params_.crack_min_length_px) continue;
+        if (long_side / short_side < params_.crack_aspect_min) continue;
+        float conf = long_side / (4.f * params_.crack_min_length_px);
+        out.push_back(Make(DefectType::CRACK, conf, cv::boundingRect(c), cam,
+                           "crack length " + std::to_string(static_cast<int>(long_side)) + " px"));
+    }
+    return out;
+}
+
+// ---------------------------------------------------------------------------
+// BROKEN — rim residual runs; only the key notch (by angle) is exempt (slide 33)
+// ---------------------------------------------------------------------------
+std::vector<DefectResult> DefectDetector::DetectBroken(const CseGeometry& g, CameraID cam) {
+    std::vector<DefectResult> out;
+    const int n = 720;
+    std::vector<float> prof = locator_.RimProfile(g, n);
+    const float R = g.radius_px;
+    const LocatorParams& lp = params_.locator;
+
+    std::vector<char> flag(n);
+    for (int i = 0; i < n; ++i) flag[i] = (R - prof[i]) > params_.broken_depth_px;
+
+    for (int i = 0; i < n; ++i) {
+        if (!flag[i] || flag[(i + n - 1) % n]) continue;  // run start only
+        int len = 0;
+        float depth = 0.f;
+        int j = i;
+        while (flag[j % n] && len < n) {
+            depth = std::max(depth, R - prof[j % n]);
+            ++len;
+            ++j;
+        }
+        float width_deg = len * 360.f / n;
+        float centre_deg = std::fmod((i + (len - 1) / 2.f) * 360.f / n, 360.f);
+
+        bool is_notch = false;
+        if (!std::isnan(g.notch_angle_deg)) {
+            float da = std::fabs(centre_deg - g.notch_angle_deg);
+            da = std::min(da, 360.f - da);
+            is_notch = da <= lp.notch_width_deg && depth <= 1.5f * lp.notch_depth_px;
+        }
+        if (is_notch) continue;
+
+        float a0 = (centre_deg - width_deg / 2.f) * static_cast<float>(CV_PI) / 180.f;
+        float a1 = (centre_deg + width_deg / 2.f) * static_cast<float>(CV_PI) / 180.f;
+        std::vector<cv::Point> pts = {
+            cv::Point(cvRound(g.center.x + R * std::cos(a0)), cvRound(g.center.y + R * std::sin(a0))),
+            cv::Point(cvRound(g.center.x + R * std::cos(a1)), cvRound(g.center.y + R * std::sin(a1))),
+            cv::Point(cvRound(g.center.x + (R - depth) * std::cos((a0 + a1) / 2)),
+                      cvRound(g.center.y + (R - depth) * std::sin((a0 + a1) / 2)))};
+        cv::Rect bb = cv::boundingRect(pts);
+        bb.x -= 4; bb.y -= 4; bb.width += 8; bb.height += 8;
+        float conf = depth / (3.f * params_.broken_depth_px);
+        out.push_back(Make(DefectType::BROKEN, conf, bb, cam,
+                           "rim chip depth " + std::to_string(static_cast<int>(depth)) +
+                               " px at " + std::to_string(static_cast<int>(centre_deg)) + " deg"));
+    }
+    return out;
+}
+
+// ---------------------------------------------------------------------------
+// MISALIGNMENT — disc centre vs the station's fixture centre (slide 45)
+// ---------------------------------------------------------------------------
+std::vector<DefectResult> DefectDetector::DetectMisalignment(const CseGeometry& g, cv::Size frame,
+                                                             CameraID cam) {
+    std::vector<DefectResult> out;
+    cv::Point2f ref = (cam == CameraID::CCD3_BOTTOM) ? params_.fixture_center_ccd3
+                                                     : params_.fixture_center_ccd1;
+    if (ref.x < 0 || ref.y < 0) ref = cv::Point2f(frame.width / 2.f, frame.height / 2.f);
+
+    double offset_mm = std::hypot(g.center.x - ref.x, g.center.y - ref.y) * params_.mm_per_px_ccd123;
+    if (offset_mm > params_.misalign_max_offset_mm) {
+        int r = static_cast<int>(g.radius_px);
+        cv::Rect bb(static_cast<int>(g.center.x) - r, static_cast<int>(g.center.y) - r, 2 * r, 2 * r);
+        bb &= cv::Rect(0, 0, frame.width, frame.height);
+        float conf = static_cast<float>(offset_mm / (2.0 * params_.misalign_max_offset_mm));
+        out.push_back(Make(DefectType::MISALIGNMENT, conf, bb, cam,
+                           "centre offset " + std::to_string(offset_mm) + " mm"));
+    }
+    return out;
+}
 std::vector<DefectResult> DefectDetector::DetectContamination(const cv::Mat&, const CseGeometry&,
                                                               const cv::Mat&, CameraID) { return {}; }
 std::vector<DefectResult> DefectDetector::DetectPinsTop(const cv::Mat&, const CseGeometry&,
