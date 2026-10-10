@@ -339,12 +339,233 @@ std::vector<DefectResult> DefectDetector::DetectMisalignment(const CseGeometry& 
 }
 std::vector<DefectResult> DefectDetector::DetectContamination(const cv::Mat&, const CseGeometry&,
                                                               const cv::Mat&, CameraID) { return {}; }
-std::vector<DefectResult> DefectDetector::DetectPinsTop(const cv::Mat&, const CseGeometry&,
-                                                        cv::Mat&) { return {}; }
-std::vector<DefectResult> DefectDetector::DetectEpoxyExposal(const cv::Mat&, const CseGeometry&,
-                                                             const cv::Mat&) { return {}; }
-std::vector<DefectResult> DefectDetector::DetectCode(const cv::Mat&, const CseGeometry&,
-                                                     cv::Mat&) { return {}; }
+// ---------------------------------------------------------------------------
+// Top-side pins and their epoxy (slides 35, 38, 44)
+//   hole  = dark, low-saturation circular blob of the expected radius
+//   pin   = bright metallic core inside the hole
+//   epoxy = saturated amber ring around the hole
+// ---------------------------------------------------------------------------
+std::vector<DefectResult> DefectDetector::DetectPinsTop(const cv::Mat& bgr, const CseGeometry& g,
+                                                        cv::Mat& pin_mask_out) {
+    std::vector<DefectResult> out;
+    const CameraID cam = CameraID::CCD1_TOP;
+    cv::Mat interior = locator_.InteriorMask(g);
+    pin_mask_out = cv::Mat::zeros(bgr.size(), CV_8U);
+    if (interior.empty()) return out;
+
+    cv::Mat gray, hsv;
+    cv::cvtColor(bgr, gray, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(bgr, hsv, cv::COLOR_BGR2HSV);
+    std::vector<cv::Mat> ch(3);
+    cv::split(hsv, ch);
+    const cv::Mat& S = ch[1];
+    const cv::Mat& V = ch[2];
+
+    // hole candidates: dark and unsaturated (the amber ring and the ink are saturated)
+    cv::Mat dark, unsat, holes;
+    cv::threshold(gray, dark, params_.pin_head_dark_thresh, 255, cv::THRESH_BINARY_INV);
+    cv::threshold(S, unsat, params_.epoxy_sat_min, 255, cv::THRESH_BINARY_INV);
+    cv::bitwise_and(dark, unsat, holes);
+    cv::bitwise_and(holes, interior, holes);
+    cv::Mat k5 = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
+    cv::morphologyEx(holes, holes, cv::MORPH_CLOSE, k5);   // fill the core cavity
+
+    // epoxy mask: saturated amber, not too bright
+    cv::Mat sat_ok, val_ok, epoxy;
+    cv::threshold(S, sat_ok, params_.epoxy_sat_min, 255, cv::THRESH_BINARY);
+    cv::threshold(V, val_ok, params_.epoxy_val_max, 255, cv::THRESH_BINARY_INV);
+    cv::bitwise_or(sat_ok, val_ok, epoxy);
+    cv::bitwise_and(epoxy, g.disc_mask, epoxy);
+    cv::Mat epoxy_labels;
+    cv::connectedComponents(epoxy, epoxy_labels, 8, CV_32S);
+
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(holes, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    const float r_nom = params_.pin_head_radius_px;
+    const float ring = params_.epoxy_ring_px;
+    int hole_count = 0;
+    for (const auto& c : contours) {
+        double area = cv::contourArea(c);
+        if (area < 10) continue;
+        double per = cv::arcLength(c, true);
+        double circ = per > 0 ? 4.0 * CV_PI * area / (per * per) : 0.0;
+        cv::Point2f hc;
+        float hr = 0.f;
+        cv::minEnclosingCircle(c, hc, hr);
+        if (circ < 0.6 || hr < 0.6f * r_nom || hr > 1.4f * r_nom) continue;
+        ++hole_count;
+
+        // pin core present?
+        cv::Mat core_mask = cv::Mat::zeros(bgr.size(), CV_8U);
+        cv::circle(core_mask, hc, static_cast<int>(0.6f * hr), cv::Scalar(255), cv::FILLED);
+        cv::Mat bright;
+        cv::threshold(V, bright, params_.pin_core_val_min, 255, cv::THRESH_BINARY);
+        cv::bitwise_and(bright, core_mask, bright);
+        int core_px = cv::countNonZero(bright);
+        cv::Rect hole_bb = cv::boundingRect(c);
+        if (core_px < params_.pin_core_area_min_px) {
+            out.push_back(Make(DefectType::PIN_MISSING, 1.f, hole_bb, cam,
+                               "hole without pin core"));
+        }
+
+        // epoxy ring fill
+        cv::Mat ring_mask = cv::Mat::zeros(bgr.size(), CV_8U);
+        cv::circle(ring_mask, hc, static_cast<int>(hr + ring), cv::Scalar(255), cv::FILLED);
+        cv::circle(ring_mask, hc, static_cast<int>(hr), cv::Scalar(0), cv::FILLED);
+        int ring_px = cv::countNonZero(ring_mask);
+        cv::Mat ring_epoxy;
+        cv::bitwise_and(epoxy, ring_mask, ring_epoxy);
+        double fill = ring_px > 0 ? static_cast<double>(cv::countNonZero(ring_epoxy)) / ring_px : 0.0;
+        cv::Rect ring_bb(static_cast<int>(hc.x - hr - ring), static_cast<int>(hc.y - hr - ring),
+                         static_cast<int>(2 * (hr + ring)), static_cast<int>(2 * (hr + ring)));
+        ring_bb &= cv::Rect(0, 0, bgr.cols, bgr.rows);
+        if (fill < params_.epoxy_ring_min_fill) {
+            out.push_back(Make(DefectType::INSUFFICIENT_EPOXY, static_cast<float>(1.0 - fill), ring_bb,
+                               cam, "epoxy ring fill " + std::to_string(static_cast<int>(fill * 100)) + "%"));
+        }
+
+        // epoxy overflow: the connected epoxy component touching the ring is too large
+        double nominal = CV_PI * ((hr + ring) * (hr + ring) - hr * hr);
+        int label = 0;
+        for (int y = ring_bb.y; y < ring_bb.y + ring_bb.height && label == 0; ++y)
+            for (int x = ring_bb.x; x < ring_bb.x + ring_bb.width; ++x)
+                if (ring_epoxy.at<uchar>(y, x)) { label = epoxy_labels.at<int>(y, x); break; }
+        if (label > 0) {
+            cv::Mat comp = (epoxy_labels == label);
+            int comp_px = cv::countNonZero(comp);
+            if (comp_px > params_.epoxy_overflow_ratio * nominal) {
+                cv::Rect comp_bb = cv::boundingRect(comp);
+                out.push_back(Make(DefectType::EPOXY_OVERFLOW,
+                                   static_cast<float>(comp_px / (2.0 * params_.epoxy_overflow_ratio * nominal)),
+                                   comp_bb, cam,
+                                   "epoxy area " + std::to_string(comp_px) + " px around pin"));
+                cv::Mat comp_d;
+                cv::dilate(comp, comp_d, cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(13, 13)));
+                cv::bitwise_or(pin_mask_out, comp_d, pin_mask_out);
+            }
+        }
+
+        cv::circle(pin_mask_out, hc, static_cast<int>(hr + ring + 6), cv::Scalar(255), cv::FILLED);
+    }
+
+    if (hole_count < params_.expected_pin_count) {
+        int r = static_cast<int>(g.radius_px);
+        cv::Rect bb(static_cast<int>(g.center.x) - r, static_cast<int>(g.center.y) - r, 2 * r, 2 * r);
+        out.push_back(Make(DefectType::PIN_MISSING, 1.f, bb & cv::Rect(0, 0, bgr.cols, bgr.rows), cam,
+                           std::to_string(hole_count) + " of " +
+                               std::to_string(params_.expected_pin_count) + " pins found"));
+    }
+    return out;
+}
+
+// ---------------------------------------------------------------------------
+// EPOXY_EXPOSAL — grey, granular (high local texture) patch on the ceramic (slide 34)
+// ---------------------------------------------------------------------------
+std::vector<DefectResult> DefectDetector::DetectEpoxyExposal(const cv::Mat& bgr, const CseGeometry& g,
+                                                             const cv::Mat& exclude_mask) {
+    std::vector<DefectResult> out;
+    cv::Mat roi = locator_.InteriorMask(g);
+    if (roi.empty()) return out;
+    if (!exclude_mask.empty()) {
+        cv::Mat not_excl;
+        cv::bitwise_not(exclude_mask, not_excl);
+        cv::bitwise_and(roi, not_excl, roi);
+    }
+
+    cv::Mat gray, hsv;
+    cv::cvtColor(bgr, gray, cv::COLOR_BGR2GRAY);
+    cv::cvtColor(bgr, hsv, cv::COLOR_BGR2HSV);
+    cv::Mat S;
+    cv::extractChannel(hsv, S, 1);
+
+    // local std-dev over 7x7
+    cv::Mat f, mean, mean_sq, var;
+    gray.convertTo(f, CV_32F);
+    cv::boxFilter(f, mean, CV_32F, cv::Size(7, 7));
+    cv::boxFilter(f.mul(f), mean_sq, CV_32F, cv::Size(7, 7));
+    var = mean_sq - mean.mul(mean);
+    cv::Mat stddev;
+    cv::sqrt(cv::max(var, 0.f), stddev);
+
+    cv::Mat textured = stddev > params_.exposal_texture_min;
+    cv::Mat unsat;
+    cv::threshold(S, unsat, params_.exposal_sat_max, 255, cv::THRESH_BINARY_INV);
+    cv::Mat cand;
+    cv::bitwise_and(textured, unsat, cand);
+    cv::bitwise_and(cand, roi, cand);
+    cv::Mat k5 = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
+    cv::morphologyEx(cand, cand, cv::MORPH_CLOSE, k5);
+
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(cand, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    for (const auto& c : contours) {
+        double area = cv::contourArea(c);
+        if (area < params_.exposal_area_min_px) continue;
+        out.push_back(Make(DefectType::EPOXY_EXPOSAL, static_cast<float>(area / (4.0 * params_.exposal_area_min_px)),
+                           cv::boundingRect(c), CameraID::CCD1_TOP,
+                           "granular patch " + std::to_string(static_cast<int>(area)) + " px"));
+    }
+    return out;
+}
+
+// ---------------------------------------------------------------------------
+// NO_CODE / CODE_BLUR — the marking ROI follows the key notch (slides 41, 42)
+// ---------------------------------------------------------------------------
+std::vector<DefectResult> DefectDetector::DetectCode(const cv::Mat& bgr, const CseGeometry& g,
+                                                     cv::Mat& code_mask_out) {
+    std::vector<DefectResult> out;
+    const CameraID cam = CameraID::CCD1_TOP;
+    code_mask_out = cv::Mat::zeros(bgr.size(), CV_8U);
+
+    // ROI centre = disc centre + code_offset_px along the notch direction;
+    // without a notch the code is assumed below the centre (notch at +y).
+    float notch_deg = std::isnan(g.notch_angle_deg) ? 90.f : g.notch_angle_deg;
+    float a = notch_deg * static_cast<float>(CV_PI) / 180.f;
+    cv::Point2f centre(g.center.x + params_.code_offset_px * std::cos(a),
+                       g.center.y + params_.code_offset_px * std::sin(a));
+    float rot_deg = notch_deg - 90.f;
+
+    cv::Size roi_size(params_.code_roi_w, params_.code_roi_h);
+    cv::Mat rot = cv::getRotationMatrix2D(centre, rot_deg, 1.0);
+    rot.at<double>(0, 2) += roi_size.width / 2.0 - centre.x;
+    rot.at<double>(1, 2) += roi_size.height / 2.0 - centre.y;
+    cv::Mat gray, code;
+    cv::cvtColor(bgr, gray, cv::COLOR_BGR2GRAY);
+    cv::warpAffine(gray, code, rot, roi_size, cv::INTER_LINEAR, cv::BORDER_REPLICATE);
+
+    // mask of the ROI polygon in source coordinates (for the other detectors)
+    cv::RotatedRect rr(centre, cv::Size2f(static_cast<float>(roi_size.width + 12),
+                                          static_cast<float>(roi_size.height + 12)), -rot_deg);
+    cv::Point2f v[4];
+    rr.points(v);
+    std::vector<cv::Point> poly = {v[0], v[1], v[2], v[3]};
+    cv::fillConvexPoly(code_mask_out, poly, cv::Scalar(255));
+    cv::Rect roi_bb = cv::boundingRect(poly) & cv::Rect(0, 0, bgr.cols, bgr.rows);
+
+    double mean = cv::mean(code)[0];
+    cv::Mat ink;
+    cv::threshold(code, ink, mean - params_.code_ink_contrast, 255, cv::THRESH_BINARY_INV);
+    double ink_ratio = static_cast<double>(cv::countNonZero(ink)) / code.total();
+
+    if (ink_ratio < params_.code_min_ink_ratio) {
+        out.push_back(Make(DefectType::NO_CODE, 1.f, roi_bb, cam,
+                           "ink ratio " + std::to_string(ink_ratio)));
+        return out;
+    }
+
+    cv::Mat lap;
+    cv::Laplacian(code, lap, CV_64F);
+    cv::Scalar mu, sigma;
+    cv::meanStdDev(lap, mu, sigma);
+    double variance = sigma[0] * sigma[0];
+    if (variance < params_.code_laplacian_blur_limit) {
+        out.push_back(Make(DefectType::CODE_BLUR,
+                           static_cast<float>(1.0 - variance / params_.code_laplacian_blur_limit), roi_bb,
+                           cam, "Laplacian variance " + std::to_string(variance)));
+    }
+    return out;
+}
 std::vector<DefectResult> DefectDetector::DetectPinsSide(const cv::Mat&, const cv::Mat&,
                                                          const cv::Rect&) { return {}; }
 std::vector<DefectResult> DefectDetector::DetectGoldExposal(const cv::Mat&, const cv::Rect&) { return {}; }

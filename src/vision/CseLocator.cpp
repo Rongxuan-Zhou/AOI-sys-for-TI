@@ -15,9 +15,10 @@ namespace aoi {
 CseLocator::CseLocator(LocatorParams p) : p_(p) {}
 
 // ---------------------------------------------------------------------------
-// Foreground: Otsu on the V channel. A dark or noise-only frame has an Otsu
-// level below min_otsu_thresh and is rejected instead of being split into a
-// fake disc.
+// Foreground: everything brighter than the black background (V > disc_fg_thresh),
+// so the amber epoxy and the pin holes stay part of the disc even when they
+// touch the rim (slide 32). Otsu is only a guard: a dark or noise-only frame
+// has an Otsu level below min_otsu_thresh and is rejected.
 // ---------------------------------------------------------------------------
 bool CseLocator::Foreground(const cv::Mat& img, cv::Mat& fg) const {
     cv::Mat gray;
@@ -33,6 +34,7 @@ bool CseLocator::Foreground(const cv::Mat& img, cv::Mat& fg) const {
 
     double level = cv::threshold(gray, fg, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU);
     if (level < p_.min_otsu_thresh) return false;
+    cv::threshold(gray, fg, p_.disc_fg_thresh, 255, cv::THRESH_BINARY);
 
     cv::Mat kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5));
     cv::morphologyEx(fg, fg, cv::MORPH_OPEN, kernel);
@@ -86,11 +88,13 @@ CseGeometry CseLocator::Locate(const cv::Mat& img) const {
     cv::minEnclosingCircle(*largest, enc_c, enc_r);
     if (enc_r < p_.min_disc_radius_px) return g;
 
-    // Pass 1: all contour points. Pass 2: radial inliers only, so the notch
-    // or a chipped rim does not pull the fit.
+    // Pass 1: convex hull (the disc is convex; chips and the notch are concave
+    // and drop out). Pass 2: radial inliers of the full contour.
+    std::vector<cv::Point> hull;
+    cv::convexHull(*largest, hull);
     cv::Point2f c = enc_c;
     float r = enc_r;
-    if (!FitCircleLSQ(*largest, c, r)) return g;
+    if (!FitCircleLSQ(hull, c, r)) return g;
     std::vector<cv::Point> inliers;
     inliers.reserve(largest->size());
     for (const auto& p : *largest) {

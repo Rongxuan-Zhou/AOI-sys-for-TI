@@ -189,6 +189,7 @@ PYBIND11_MODULE(_aoi_vision_core, m) {
         .def(py::init<>())
         .def_readwrite("min_disc_radius_px", &LocatorParams::min_disc_radius_px)
         .def_readwrite("min_otsu_thresh",    &LocatorParams::min_otsu_thresh)
+        .def_readwrite("disc_fg_thresh",     &LocatorParams::disc_fg_thresh)
         .def_readwrite("notch_width_deg",    &LocatorParams::notch_width_deg)
         .def_readwrite("notch_depth_px",     &LocatorParams::notch_depth_px)
         .def_readwrite("fit_inlier_ratio",   &LocatorParams::fit_inlier_ratio)

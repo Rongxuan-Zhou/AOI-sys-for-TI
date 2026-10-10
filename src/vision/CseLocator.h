@@ -38,6 +38,7 @@ struct CseGeometry {
 struct LocatorParams {
     int   min_disc_radius_px = 60;    // smaller bright blobs are not a disc
     int   min_otsu_thresh    = 30;    // Otsu level below this = no real foreground (dark frame)
+    int   disc_fg_thresh     = 40;    // V above this is disc (epoxy and pin holes included)
     float notch_width_deg    = 7.f;   // nominal angular width of the key notch
     float notch_depth_px     = 10.f;  // nominal radial depth of the key notch
     float fit_inlier_ratio   = 0.03f; // |r - R| / R accepted for the second fit pass
@@ -70,7 +71,7 @@ public:
 private:
     LocatorParams p_;
 
-    /// Foreground mask by Otsu on the V channel; returns false when the frame is dark.
+    /// Foreground = V > disc_fg_thresh (Otsu level only guards against dark frames).
     bool Foreground(const cv::Mat& img, cv::Mat& fg) const;
 };
 
