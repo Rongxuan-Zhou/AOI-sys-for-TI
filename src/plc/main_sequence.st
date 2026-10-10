@@ -25,7 +25,9 @@
  *
  * Every inspection station carries 4 cameras (slide 10): one hardware
  * trigger pulse per station images the whole 4-unit batch and the IPC
- * returns VISION_RESULT[cam, 1..4].
+ * returns VISION_RESULT[cam, 1..4] and sets VISION_DONE[cam] once per
+ * trigger. CCD#2 is the exception: 36 trigger pulses per sweep, ONE DONE
+ * after the last frame, and SIDE_FRAMES_ECHO reports the frames received.
  * ========================================================================== *)
 
 PROGRAM MAIN_SEQUENCE
@@ -66,6 +68,8 @@ TYPE
 
     TYPE_AXIS_CMD : STRUCT
         TARGET_POS      : DINT;     (* command position in encoder pulses *)
+        TARGET_EU       : REAL;     (* the same target in engineering units, for AT_TARGET *)
+        REL_MODE        : BOOL;     (* TRUE = incremental move (rotators, drive in degree unit) *)
         SPEED           : DINT;     (* mm/s or deg/s x 100 *)
         ACCEL           : DINT;     (* mm/s^2 or deg/s^2 x 100 *)
         DECEL           : DINT;
@@ -116,6 +120,7 @@ VAR CONSTANT
     T_HB                 : TIME := T#1s;        (* IPC heartbeat must toggle within this *)
     T_PUSH               : TIME := T#500ms;     (* empty basket push pulse *)
     T_RELEASE            : TIME := T#100ms;     (* Transfer 5 per-unit release pulse *)
+    POS_TOL_EU           : REAL := 0.05;        (* AT_TARGET window, mm or deg *)
 
     (* capacities *)
     GROUPS_PER_BASKET    : INT  := 10;          (* 4-unit groups per basket (recipe) *)
@@ -143,6 +148,9 @@ VAR
     (* ---- servo axes (CC-Link IE Field cyclic) ----
        1-6 transfers, 7-10 theta units on Transfer 4, 11-14 side rotators, 15 pitch e-cylinder *)
     AXIS                : ARRAY[1..15] OF TYPE_AXIS_CMD;
+    AT_TARGET           : ARRAY[1..15] OF BOOL;     (* IN_POSITION confirmed by position compare *)
+    ERROR_REQ           : BOOL;                     (* latched by the pre-CASE monitors *)
+    ERROR_CODE_REQ      : INT := 0;
 
     (* ---- vision handshake (EtherNet/IP CIP implicit) ----
        index 1..4 = CCD#1..#4, 5 = NG check CCD *)
@@ -158,6 +166,8 @@ VAR
     HB_FALL             : F_TRIG;
     HB_TIMER            : TON;
     SIDE_FRAME_IDX      : INT := 0;
+    SIDE_FRAMES_ECHO    : INT := 0;                 (* IPC: frames received for the current sweep *)
+    SIDE_SWEPT_DEG      : REAL := 0.0;
 
     (* ---- batch bookkeeping ---- *)
     UNIT_NG             : ARRAY[1..4] OF BOOL;
@@ -303,7 +313,26 @@ FOR i := 1 TO 5 DO
 END_FOR;
 
 (* ---------------------------------------------------------------------------
- * EDGES AND SAFETY
+ * AXIS ARRIVAL (every scan)
+ * The drive's IN_POSITION bit stays TRUE for at least one communication cycle
+ * after a new target is written, so a state must never advance on it alone.
+ * Absolute axes: arrival = IN_POSITION, not BUSY, and the feedback within
+ * POS_TOL_EU of the commanded engineering-unit target (a zero-length move is
+ * therefore complete at once). Rotators 11-14 move incrementally in the
+ * drive's degree unit; their arrival is the end of the 36-frame sweep.
+ * ------------------------------------------------------------------------ *)
+FOR i := 1 TO 15 DO
+    IF AXIS[i].REL_MODE THEN
+        AT_TARGET[i] := AXIS[i].IN_POSITION AND NOT AXIS[i].BUSY AND (SIDE_FRAME_IDX >= SIDE_FRAMES);
+    ELSE
+        AT_TARGET[i] := AXIS[i].IN_POSITION AND NOT AXIS[i].BUSY
+                        AND (ABS(AXIS[i].ACTUAL_POS - AXIS[i].TARGET_EU) <= POS_TOL_EU);
+    END_IF;
+END_FOR;
+
+(* ---------------------------------------------------------------------------
+ * EDGES AND SAFETY - monitors latch ERROR_REQ; the transition block applies
+ * it after the state bodies so a body transition in the same scan cannot win.
  * ------------------------------------------------------------------------ *)
 RT_START(CLK := CMD_START);
 RT_RESET(CLK := CMD_RESET);
@@ -313,14 +342,14 @@ IF CMD_STOP THEN
 END_IF;
 
 IF FT_ESTOP.Q THEN
-    NEXT_STATE := ST_ERROR;
-    LAST_ERROR_CODE := 9001;    (* E-Stop activated *)
+    ERROR_REQ := TRUE;
+    ERROR_CODE_REQ := 9001;     (* E-Stop activated *)
 END_IF;
 
 IF NOT ESTOP_OK OR NOT SAFETY_GATE_CLOSED OR NOT SERVO_STO_RELEASED THEN
     IF CURRENT_STATE <> ST_IDLE AND CURRENT_STATE <> ST_ERROR THEN
-        NEXT_STATE := ST_ERROR;
-        LAST_ERROR_CODE := 9002;    (* safety interlock violation *)
+        ERROR_REQ := TRUE;
+        ERROR_CODE_REQ := 9002;     (* safety interlock violation *)
     END_IF;
 END_IF;
 
@@ -341,11 +370,11 @@ STEP_TIMER(IN := CYCLE_RUNNING AND NOT STEP_RESET
                  AND (CURRENT_STATE <> ST_IDLE) AND (CURRENT_STATE <> ST_ERROR),
            PT := STEP_TIMEOUT_SEL);
 IF STEP_TIMER.Q AND CURRENT_STATE <> ST_ERROR THEN
-    NEXT_STATE := ST_ERROR;
-    LAST_ERROR_CODE := 8001;    (* step timeout *)
+    ERROR_REQ := TRUE;
+    ERROR_CODE_REQ := 8001;     (* step timeout *)
     FOR i := 1 TO 5 DO
         IF VISION_PENDING[i] THEN
-            LAST_ERROR_CODE := 8002;    (* vision result timeout *)
+            ERROR_CODE_REQ := 8002;     (* vision result timeout *)
         END_IF;
     END_FOR;
 END_IF;
@@ -355,8 +384,8 @@ HB_EDGE(CLK := IPC_HEARTBEAT);
 HB_FALL(CLK := IPC_HEARTBEAT);
 HB_TIMER(IN := CYCLE_RUNNING AND NOT HB_EDGE.Q AND NOT HB_FALL.Q, PT := T_HB);
 IF HB_TIMER.Q AND CURRENT_STATE <> ST_ERROR THEN
-    NEXT_STATE := ST_ERROR;
-    LAST_ERROR_CODE := 8003;    (* IPC heartbeat lost *)
+    ERROR_REQ := TRUE;
+    ERROR_CODE_REQ := 8003;     (* IPC heartbeat lost *)
 END_IF;
 
 (* ---------------------------------------------------------------------------
@@ -502,12 +531,13 @@ CASE CURRENT_STATE OF
 
         CASE SUB_STEP OF
             0:
+                AXIS[15].TARGET_EU := PITCH_EXPAND_MM;
                 AXIS[15].TARGET_POS := REAL_TO_DINT(PITCH_EXPAND_MM * PULSES_PER_MM_AX15);
                 AXIS[15].SPEED := 20000;    (* 200 mm/s *)
                 AXIS[15].ACCEL := 200000;
                 SUB_STEP := 1;
             1:
-                IF AXIS[15].IN_POSITION AND PITCH_SETTLED THEN
+                IF AT_TARGET[15] AND PITCH_SETTLED THEN
                     SOL_BLUE_HOLDER_CLOSE := TRUE;
                     SUB_STEP := 2;
                 END_IF;
@@ -548,13 +578,14 @@ CASE CURRENT_STATE OF
                 SOL_PLATFORM_VACUUM := FALSE;
                 SOL_BLUE_HOLDER_CLOSE := FALSE;
                 IF HOLDER_OPEN THEN
+                    AXIS[1].TARGET_EU := POS_T1_LIGHTING_MM;
                     AXIS[1].TARGET_POS := REAL_TO_DINT(POS_T1_LIGHTING_MM * PULSES_PER_MM);
                     AXIS[1].SPEED := 100000;    (* 1000 mm/s *)
                     AXIS[1].ACCEL := 1000000;
                     SUB_STEP := 2;
                 END_IF;
             2:
-                IF AXIS[1].IN_POSITION THEN
+                IF AT_TARGET[1] THEN
                     SOL_NEST_VACUUM_CCD4 := TRUE;
                     SOL_TRANSFER_GRIP[1] := FALSE;
                     SUB_STEP := 3;
@@ -564,7 +595,9 @@ CASE CURRENT_STATE OF
                     TRANSFER_ACTIVE[1] := FALSE;
                     (* pitch mechanism back home: flip back, e-cylinder to 0 *)
                     SOL_FLIP_180 := FALSE;
+                    AXIS[15].TARGET_EU := 0.0;
                     AXIS[15].TARGET_POS := 0;
+                    AXIS[1].TARGET_EU := 0.0;
                     AXIS[1].TARGET_POS := 0;
                     SUB_STEP := 4;
                 END_IF;
@@ -629,6 +662,7 @@ CASE CURRENT_STATE OF
                 END_IF;
             1:
                 SOL_NEST_VACUUM_CCD4 := FALSE;
+                AXIS[2].TARGET_EU := POS_T2_HANDOFF_MM;
                 AXIS[2].TARGET_POS := REAL_TO_DINT(POS_T2_HANDOFF_MM * PULSES_PER_MM);
                 AXIS[2].SPEED := 60000;     (* 600 mm/s: keeps motion blur under 1 px at 10 us strobe *)
                 AXIS[2].ACCEL := 600000;
@@ -640,12 +674,13 @@ CASE CURRENT_STATE OF
                     VISION_PENDING[3] := TRUE;
                     VISION_TRIG[3] := TRUE;
                 END_IF;
-                IF AXIS[2].IN_POSITION AND T2_FIRED AND NOT VISION_PENDING[3] THEN
+                IF AT_TARGET[2] AND T2_FIRED AND NOT VISION_PENDING[3] THEN
                     FOR u := 1 TO 4 DO
                         UNIT_NG[u] := UNIT_NG[u] OR NOT VISION_RESULT[3, u].JUDGE;
                     END_FOR;
                     SOL_TRANSFER_GRIP[2] := FALSE;
                     TRANSFER_ACTIVE[2] := FALSE;
+                    AXIS[2].TARGET_EU := 0.0;
                     AXIS[2].TARGET_POS := 0;
                     NEXT_STATE := ST_TOP_CHECK;
                 END_IF;
@@ -680,13 +715,14 @@ CASE CURRENT_STATE OF
                 END_IF;
             2:
                 IF CCD1_RETRACTED THEN
+                    AXIS[3].TARGET_EU := POS_T3_PICK_MM;
                     AXIS[3].TARGET_POS := REAL_TO_DINT(POS_T3_PICK_MM * PULSES_PER_MM);
                     AXIS[3].SPEED := 80000;
                     AXIS[3].ACCEL := 800000;
                     SUB_STEP := 3;
                 END_IF;
             3:
-                IF AXIS[3].IN_POSITION THEN
+                IF AT_TARGET[3] THEN
                     NEXT_STATE := ST_TRANSFER_4_COMP;
                 END_IF;
         END_CASE;
@@ -708,28 +744,33 @@ CASE CURRENT_STATE OF
                     SUB_STEP := 1;
                 END_IF;
             1:
+                AXIS[4].TARGET_EU := POS_T4_SIDE_MM;
                 AXIS[4].TARGET_POS := REAL_TO_DINT(POS_T4_SIDE_MM * PULSES_PER_MM);
                 AXIS[4].SPEED := 100000;
                 AXIS[4].ACCEL := 1000000;
                 FOR u := 1 TO 4 DO
-                    AXIS[6 + u].TARGET_POS := REAL_TO_DINT(0.0 - UNIT_THETA[u] * PULSES_PER_DEG_AX7);
+                    AXIS[6 + u].TARGET_EU := 0.0 - UNIT_THETA[u];
+                    AXIS[6 + u].TARGET_POS := REAL_TO_DINT(AXIS[6 + u].TARGET_EU * PULSES_PER_DEG_AX7);
                     AXIS[6 + u].SPEED := 36000;     (* 360 deg/s *)
                     AXIS[6 + u].ACCEL := 360000;
                 END_FOR;
                 (* Transfer 3 shuttle back under CCD#1 for the next batch *)
+                AXIS[3].TARGET_EU := POS_T3_INSPECT_MM;
                 AXIS[3].TARGET_POS := REAL_TO_DINT(POS_T3_INSPECT_MM * PULSES_PER_MM);
                 SUB_STEP := 2;
             2:
-                IF AXIS[4].IN_POSITION AND AXIS[7].IN_POSITION AND AXIS[8].IN_POSITION
-                   AND AXIS[9].IN_POSITION AND AXIS[10].IN_POSITION THEN
+                IF AT_TARGET[4] AND AT_TARGET[7] AND AT_TARGET[8]
+                   AND AT_TARGET[9] AND AT_TARGET[10] THEN
                     SOL_NEST_VACUUM_SIDE := TRUE;
                     SOL_TRANSFER_GRIP[4] := FALSE;
                     SUB_STEP := 3;
                 END_IF;
             3:
                 TRANSFER_ACTIVE[4] := FALSE;
+                AXIS[4].TARGET_EU := 0.0;
                 AXIS[4].TARGET_POS := 0;
                 FOR u := 1 TO 4 DO
+                    AXIS[6 + u].TARGET_EU := 0.0;
                     AXIS[6 + u].TARGET_POS := 0;
                 END_FOR;
                 NEXT_STATE := ST_SIDE_CHECK;
@@ -748,29 +789,41 @@ CASE CURRENT_STATE OF
         CASE SUB_STEP OF
             0:
                 IF GRIPPER_UP THEN
+                    (* one incremental revolution; the drives run in the degree
+                       unit (modulo 360), so the command never accumulates *)
                     FOR i := 11 TO 14 DO
+                        AXIS[i].REL_MODE := TRUE;
                         AXIS[i].REL_START := AXIS[i].ACTUAL_POS;
-                        AXIS[i].TARGET_POS := REAL_TO_DINT((AXIS[i].ACTUAL_POS + 360.0) * PULSES_PER_DEG_AX11);
+                        AXIS[i].TARGET_EU := 360.0;
+                        AXIS[i].TARGET_POS := REAL_TO_DINT(360.0 * PULSES_PER_DEG_AX11);
                         AXIS[i].SPEED := REAL_TO_DINT(360.0 / SIDE_SWEEP_S * 100.0);
                         AXIS[i].ACCEL := 720000;
                     END_FOR;
+                    (* CCD#2 contract: 36 trigger pulses, ONE DONE after the last
+                       frame, SIDE_FRAMES_ECHO = frames received *)
+                    VISION_SEQ := VISION_SEQ + 1;
+                    VISION_PENDING[2] := TRUE;
                     SUB_STEP := 1;
                 END_IF;
             1:  (* position-compare trigger every SIDE_STEP_DEG on the first rotator *)
+                SIDE_SWEPT_DEG := AXIS[11].ACTUAL_POS - AXIS[11].REL_START;
+                IF SIDE_SWEPT_DEG < 0.0 THEN
+                    SIDE_SWEPT_DEG := SIDE_SWEPT_DEG + 360.0;   (* degree unit wrapped *)
+                END_IF;
                 IF SIDE_FRAME_IDX < SIDE_FRAMES
-                   AND AXIS[11].ACTUAL_POS >= AXIS[11].REL_START + INT_TO_REAL(SIDE_FRAME_IDX) * SIDE_STEP_DEG THEN
+                   AND SIDE_SWEPT_DEG >= INT_TO_REAL(SIDE_FRAME_IDX) * SIDE_STEP_DEG THEN
                     VISION_TRIG[2] := TRUE;
                     SIDE_FRAME_IDX := SIDE_FRAME_IDX + 1;
-                    IF SIDE_FRAME_IDX = SIDE_FRAMES THEN
-                        VISION_SEQ := VISION_SEQ + 1;
-                        VISION_PENDING[2] := TRUE;   (* IPC reports once for the whole sweep *)
-                    END_IF;
                 END_IF;
-                IF SIDE_FRAME_IDX >= SIDE_FRAMES AND AXIS[11].IN_POSITION THEN
+                IF SIDE_FRAME_IDX >= SIDE_FRAMES AND AT_TARGET[11] AND AT_TARGET[12]
+                   AND AT_TARGET[13] AND AT_TARGET[14] THEN
+                    FOR i := 11 TO 14 DO
+                        AXIS[i].REL_MODE := FALSE;
+                    END_FOR;
                     SUB_STEP := 2;
                 END_IF;
             2:
-                IF NOT VISION_PENDING[2] THEN
+                IF NOT VISION_PENDING[2] AND SIDE_FRAMES_ECHO >= SIDE_FRAMES THEN
                     FOR u := 1 TO 4 DO
                         UNIT_NG[u] := UNIT_NG[u] OR NOT VISION_RESULT[2, u].JUDGE;
                     END_FOR;
@@ -803,18 +856,19 @@ CASE CURRENT_STATE OF
                 END_IF;
             1:  (* command the drop position for unit u *)
                 IF UNIT_NG[u] THEN
+                    AXIS[5].TARGET_EU := POS_T5_NG_BELT_MM;
                     AXIS[5].TARGET_POS := REAL_TO_DINT(POS_T5_NG_BELT_MM * PULSES_PER_MM);
                 ELSE
-                    AXIS[5].TARGET_POS := REAL_TO_DINT((POS_T5_TRAY_X0_MM
-                                                        + INT_TO_REAL(TRAY_COL) * TRAY_PITCH_X_MM
-                                                        + INT_TO_REAL(TRAY_ROW) * TRAY_PITCH_Y_MM)
-                                                       * PULSES_PER_MM);
+                    AXIS[5].TARGET_EU := POS_T5_TRAY_X0_MM
+                                         + INT_TO_REAL(TRAY_COL) * TRAY_PITCH_X_MM
+                                         + INT_TO_REAL(TRAY_ROW) * TRAY_PITCH_Y_MM;
+                    AXIS[5].TARGET_POS := REAL_TO_DINT(AXIS[5].TARGET_EU * PULSES_PER_MM);
                 END_IF;
                 AXIS[5].SPEED := 80000;
                 AXIS[5].ACCEL := 800000;
                 SUB_STEP := 2;
             2:
-                IF AXIS[5].IN_POSITION THEN
+                IF AT_TARGET[5] THEN
                     SOL_T5_RELEASE[u] := TRUE;
                 END_IF;
                 RELEASE_TIMER(IN := SOL_T5_RELEASE[u], PT := T_RELEASE);
@@ -843,6 +897,7 @@ CASE CURRENT_STATE OF
             4:
                 SOL_TRANSFER_GRIP[5] := FALSE;
                 TRANSFER_ACTIVE[5] := FALSE;
+                AXIS[5].TARGET_EU := 0.0;
                 AXIS[5].TARGET_POS := 0;
                 BATCH_COUNT := BATCH_COUNT + 1;
                 IF BATCH_HAS_NG THEN
@@ -943,6 +998,7 @@ CASE CURRENT_STATE OF
                     END_IF;
                     IF ZONE_CLEAR[6] THEN
                         TRANSFER_ACTIVE[6] := TRUE;
+                        AXIS[6].TARGET_EU := POS_T6_BELT_MM;
                         AXIS[6].TARGET_POS := REAL_TO_DINT(POS_T6_BELT_MM * PULSES_PER_MM);
                         AXIS[6].SPEED := 80000;
                         AXIS[6].ACCEL := 800000;
@@ -950,18 +1006,20 @@ CASE CURRENT_STATE OF
                     END_IF;
                 END_IF;
             3:
-                IF AXIS[6].IN_POSITION THEN
+                IF AT_TARGET[6] THEN
                     SOL_TRANSFER_GRIP[6] := TRUE;
                     SOL_NG_HOLDER_BAR := FALSE;
                     IF NG_CONFIRMED THEN
+                        AXIS[6].TARGET_EU := POS_T6_NG_TRAY_MM;
                         AXIS[6].TARGET_POS := REAL_TO_DINT(POS_T6_NG_TRAY_MM * PULSES_PER_MM);
                     ELSE
+                        AXIS[6].TARGET_EU := POS_T6_OK_TRAY_MM;
                         AXIS[6].TARGET_POS := REAL_TO_DINT(POS_T6_OK_TRAY_MM * PULSES_PER_MM);
                     END_IF;
                     SUB_STEP := 4;
                 END_IF;
             4:
-                IF AXIS[6].IN_POSITION THEN
+                IF AT_TARGET[6] THEN
                     SOL_TRANSFER_GRIP[6] := FALSE;
                     NG_ON_BELT := NG_ON_BELT - 1;
                     SUB_STEP := 5;
@@ -1010,6 +1068,9 @@ CASE CURRENT_STATE OF
             NG_BELT_RUN := FALSE;
             ROBOT_START := FALSE;
             PY_TRIG := FALSE;
+            FOR i := 11 TO 14 DO
+                AXIS[i].REL_MODE := FALSE;
+            END_FOR;
             CYCLE_RUNNING := FALSE;
             SUB_STEP := 0;
             STATE_ENTRY := FALSE;
@@ -1027,6 +1088,11 @@ END_CASE;
 (* ---------------------------------------------------------------------------
  * STATE TRANSITION
  * ------------------------------------------------------------------------ *)
+IF ERROR_REQ AND CURRENT_STATE <> ST_ERROR THEN
+    NEXT_STATE := ST_ERROR;
+    LAST_ERROR_CODE := ERROR_CODE_REQ;
+END_IF;
+ERROR_REQ := FALSE;
 IF NEXT_STATE <> CURRENT_STATE THEN
     CURRENT_STATE := NEXT_STATE;
     STATE_ENTRY := TRUE;

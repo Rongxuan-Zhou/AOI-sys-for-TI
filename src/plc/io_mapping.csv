@@ -244,7 +244,6 @@ X252,SERVO14_READY,DI,Station5-Slot0,Side rotator 4 drive ready
 X253,SERVO14_IN_POS,DI,Station5-Slot0,Side rotator 4 in-position
 X254,SERVO15_READY,DI,Station5-Slot1,Pitch e-cylinder drive ready
 X255,SERVO15_IN_POS,DI,Station5-Slot1,Pitch e-cylinder in-position
-X256,PITCH_SETTLED,DI,Station5-Slot1,Pitch-change platform mechanically settled
 #
 # --- DIGITAL OUTPUTS: Single Basket Feeding ---
 Y200,SOL_BASKET_STACK_HOLD,DO,Station7-Slot2,SMC SY3140 - hold the upper baskets

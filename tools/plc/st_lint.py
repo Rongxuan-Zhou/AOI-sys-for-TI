@@ -63,6 +63,23 @@ def lint_file(path):
         findings.append(f"states never handled in CASE: {missing}")
 
     if re.search(r"\bPROGRAM\s+MAIN_SEQUENCE\b", code):
+        # State bodies must wait on AT_TARGET (position-compared), never on the
+        # drive's raw IN_POSITION bit, which stays TRUE for a cycle after a new
+        # target is written.
+        start = code.rfind("CASE CURRENT_STATE OF")
+        end = code.rfind("END_CASE")   # the main CASE closes last; the transition block follows
+        body = code[start:end] if start >= 0 and end > start else ""
+        if not body:
+            findings.append("main state machine / transition block anchors not found")
+        raw_inp = re.findall(r"AXIS\[[^\]]+\]\.IN_POSITION", body)
+        if raw_inp:
+            findings.append(f"state bodies read raw IN_POSITION {len(raw_inp)}x (use AT_TARGET)")
+        # Pre-CASE error sources must latch ERROR_REQ; the transition block
+        # must apply it so a body transition in the same scan cannot win.
+        trans = code[end:] if end > 0 else ""
+        if not re.search(r"\bERROR_REQ\b", trans):
+            findings.append("transition block does not apply ERROR_REQ")
+
         m = re.search(r"^\s*ST_ERROR\s*:(?!=)(.*?)^\s*END_CASE", code, flags=re.M | re.S)
         if not m:
             findings.append("ST_ERROR block not found")

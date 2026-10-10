@@ -225,7 +225,9 @@ AXIS_CFG[7].TORQUE_LIMIT    := 50.0;       (* Low inertia load *)
 
 (* --- Axes 11-14: Side-check rotators, one per CSE (spec slide 26), 360 deg
        sweep with 36 CCD#2 frames. Axis 11 written out, 12-14 copied below. --- *)
-(* Mitsubishi HK-KT23W, 200W, 50:1 worm gear *)
+(* Mitsubishi HK-KT23W, 200W, 50:1 worm gear. Drive unit: degree, modulo 360
+   (Pr.PT01 = 2), moved incrementally +360 per sweep so the position never
+   accumulates (DINT target would overflow after ~10 sweeps otherwise). *)
 AXIS_CFG[11].AXIS_NAME      := 'SIDE_ROT_1';
 AXIS_CFG[11].MOTION_TYPE     := 1;          (* Rotary *)
 AXIS_CFG[11].GEAR_NUM        := 1;
