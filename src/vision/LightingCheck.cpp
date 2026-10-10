@@ -6,7 +6,8 @@
  *   2. nest ring = largest "not black" blob (V > nest_val_min); its centre
  *      gives the alignment reference (slide 45)
  *   3. polar unwrap of H, S, V over the annulus [inner, outer] * R
- *   4. per-radius ring medians of V and S = colour-independent baseline
+ *   4. per-radius ring percentile (default 75th) of V and S = colour-independent
+ *      baseline that survives large dark structure (banana, hole shadows)
  *   5. residual masks → leakage (bright, compact), staining (dark, compact,
  *      outer band), cement (yellow hue, more saturated / brighter than ring)
  *   6. thickness class from the dominant annulus hue (reported only)
@@ -30,13 +31,14 @@ LightingCheck::LightingCheck(LightingParams p) : p_(p) {}
 
 namespace {
 
-/// Per-row median of a CV_8U matrix.
-cv::Mat RowMedian(const cv::Mat& m) {
+/// Per-row percentile of a CV_8U matrix (0.5 = median).
+cv::Mat RowPercentile(const cv::Mat& m, double p) {
     cv::Mat sorted;
     cv::sort(m, sorted, cv::SORT_EVERY_ROW | cv::SORT_ASCENDING);
-    cv::Mat med(m.rows, 1, CV_8U);
-    for (int r = 0; r < m.rows; ++r) med.at<uchar>(r) = sorted.at<uchar>(r, m.cols / 2);
-    return med;
+    int col = std::clamp(static_cast<int>(p * (m.cols - 1)), 0, m.cols - 1);
+    cv::Mat out(m.rows, 1, CV_8U);
+    for (int r = 0; r < m.rows; ++r) out.at<uchar>(r) = sorted.at<uchar>(r, col);
+    return out;
 }
 
 /// Broadcast a column vector (rows x 1) across cols → CV_16S matrix.
@@ -60,9 +62,10 @@ bool LargestContour(const cv::Mat& mask, std::vector<cv::Point>& out) {
 
 }  // namespace
 
-LightingResult LightingCheck::Analyse(const cv::Mat& bgr) const {
+LightingResult LightingCheck::Analyse(const cv::Mat& bgr_in) const {
     LightingResult res;
-    if (bgr.empty() || bgr.channels() != 3) return res;
+    if (bgr_in.empty() || bgr_in.channels() != 3) return res;
+    cv::Mat bgr = CseLocator::To8U(bgr_in);
 
     cv::Mat hsv;
     cv::cvtColor(bgr, hsv, cv::COLOR_BGR2HSV);
@@ -128,8 +131,8 @@ LightingResult LightingCheck::Analyse(const cv::Mat& bgr) const {
     cv::Mat uV = CseLocator::PolarUnwrap(V, c, r_in, r_out, W, Hh);
 
     // --- 4. ring-median baselines -----------------------------------------
-    cv::Mat baseV = Broadcast16S(RowMedian(uV), W);
-    cv::Mat baseS = Broadcast16S(RowMedian(uS), W);
+    cv::Mat baseV = Broadcast16S(RowPercentile(uV, p_.baseline_percentile), W);
+    cv::Mat baseS = Broadcast16S(RowPercentile(uS, p_.baseline_percentile), W);
     cv::Mat v16, s16;
     uV.convertTo(v16, CV_16S);
     uS.convertTo(s16, CV_16S);

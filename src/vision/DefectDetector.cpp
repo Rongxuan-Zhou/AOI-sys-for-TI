@@ -90,22 +90,29 @@ DefectResult DefectDetector::Make(DefectType t, float conf, cv::Rect bb, CameraI
 std::vector<DefectResult> DefectDetector::Detect(CameraID cam, const cv::Mat& image) {
     if (image.empty()) return {NotLocated(cam)};
 
+    cv::Mat u8 = CseLocator::To8U(image);
     cv::Mat bgr;
-    if (image.channels() == 1) {
-        cv::cvtColor(image, bgr, cv::COLOR_GRAY2BGR);
-    } else if (image.channels() == 3) {
-        bgr = image;
+    if (u8.channels() == 1) {
+        cv::cvtColor(u8, bgr, cv::COLOR_GRAY2BGR);
+    } else if (u8.channels() == 3) {
+        bgr = u8;
     } else {
         return {NotLocated(cam)};
     }
 
-    switch (cam) {
-        case CameraID::CCD1_TOP:    return DetectCCD1(bgr);
-        case CameraID::CCD2_SIDE:   return DetectCCD2(bgr);
-        case CameraID::CCD3_BOTTOM: return DetectCCD3(bgr);
-        case CameraID::CCD4_INNER:  return DetectCCD4(bgr);
-        case CameraID::NG_CHECK:    return DetectCCD1(bgr);   // NG reconfirm looks at the top side
-        default:                    return {NotLocated(cam)};
+    // Never let an OpenCV exception leave the detector: the IPC process must
+    // keep running and the unit is NG when the frame cannot be judged.
+    try {
+        switch (cam) {
+            case CameraID::CCD1_TOP:    return DetectCCD1(bgr);
+            case CameraID::CCD2_SIDE:   return DetectCCD2(bgr);
+            case CameraID::CCD3_BOTTOM: return DetectCCD3(bgr);
+            case CameraID::CCD4_INNER:  return DetectCCD4(bgr);
+            case CameraID::NG_CHECK:    return DetectCCD1(bgr);   // NG reconfirm looks at the top side
+            default:                    return {NotLocated(cam)};
+        }
+    } catch (const cv::Exception&) {
+        return {NotLocated(cam)};
     }
 }
 
@@ -594,8 +601,10 @@ std::vector<DefectResult> DefectDetector::DetectCode(const cv::Mat& bgr, const C
     cv::warpAffine(gray, code, rot, roi_size, cv::INTER_LINEAR, cv::BORDER_REPLICATE);
 
     // mask of the ROI polygon in source coordinates (for the other detectors)
+    // RotatedRect's angle and getRotationMatrix2D's angle share the same sign
+    // convention in image coordinates; the mask must cover the warped ROI itself.
     cv::RotatedRect rr(centre, cv::Size2f(static_cast<float>(roi_size.width + 12),
-                                          static_cast<float>(roi_size.height + 12)), -rot_deg);
+                                          static_cast<float>(roi_size.height + 12)), rot_deg);
     cv::Point2f v[4];
     rr.points(v);
     std::vector<cv::Point> poly = {v[0], v[1], v[2], v[3]};
@@ -656,13 +665,27 @@ std::vector<DefectResult> DefectDetector::DetectPinsSide(const cv::Mat& bgr, con
         int area = stats.at<int>(i, cv::CC_STAT_AREA);
         int x0 = stats.at<int>(i, cv::CC_STAT_LEFT);
         int y0 = stats.at<int>(i, cv::CC_STAT_TOP);
-        if (area < 20 || h < 0.3 * params_.pin_length_px || w > 0.5 * h) continue;  // not a pin
+        if (area < 20) continue;
         cv::Rect bb(x0, y0, w, h);
         cv::Mat comp = (labels(bb) == i);
-
-        // --- bent: angle of the fitted line from the vertical
         std::vector<cv::Point> pts;
         cv::findNonZero(comp, pts);
+        // pin-likeness must not depend on the tilt: use the minimum-area rectangle
+        cv::RotatedRect mar = cv::minAreaRect(pts);
+        float long_side = std::max(mar.size.width, mar.size.height);
+        float short_side = std::max(1.f, std::min(mar.size.width, mar.size.height));
+        if (y0 > y_b + 2 + params_.pin_w_max) continue;   // does not start at the body edge
+        if (long_side < 0.3 * params_.pin_length_px || long_side / short_side < 3.f) {
+            // Not pin-shaped. A substantial blob hanging from the body is still a
+            // pin problem (pins touching, folded pin) and must not pass silently.
+            if (area >= 0.5 * params_.pin_length_px * params_.pin_w_max) {
+                out.push_back(Make(DefectType::PIN_BENT, 1.f, bb, cam,
+                                   "abnormal pin cluster " + std::to_string(area) + " px"));
+            }
+            continue;
+        }
+
+        // --- bent: angle of the fitted line from the vertical
         cv::Vec4f line;
         cv::fitLine(pts, line, cv::DIST_L2, 0, 0.01, 0.01);
         double angle = std::atan2(std::fabs(line[0]), std::fabs(line[1])) * 180.0 / CV_PI;

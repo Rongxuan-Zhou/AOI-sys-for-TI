@@ -97,3 +97,25 @@ TEST(Lighting, DarkFrameNotLocated) {
     cv::randu(noisy, cv::Scalar(0, 0, 0), cv::Scalar(25, 25, 25));
     EXPECT_FALSE(LightingCheck().Analyse(noisy).located);
 }
+
+// Slide 30: the banana and the pin-hole shadows cover roughly half of the annulus at
+// mid radii. The lit remainder must not turn into "leakage" when the dark share grows.
+TEST(Lighting, HalfDarkAnnulusPasses) {
+    for (int dark_pct : {45, 55, 65}) {
+        cv::Mat img = test::MakeLitAnnulus(800, 600, {400, 300}, 200.f, AMBER);
+        // dark sectors over [0.5R, 0.9R] covering dark_pct of the circle, in 6 wedges
+        float total_deg = 360.f * dark_pct / 100.f;
+        for (int k = 0; k < 6; ++k) {
+            float a0 = k * 60.f, a1 = a0 + total_deg / 6.f;
+            cv::ellipse(img, cv::Point(400, 300), cv::Size(180, 180), 0, a0, a1, cv::Scalar(15, 15, 15), cv::FILLED, cv::LINE_AA);
+        }
+        cv::circle(img, cv::Point(400, 300), 100, cv::Scalar(0, 0, 0), cv::FILLED);   // restore inner zone
+        cv::Mat ring = test::MakeLitAnnulus(800, 600, {400, 300}, 200.f, AMBER);
+        cv::Mat inner_mask = cv::Mat::zeros(img.size(), CV_8U);
+        cv::circle(inner_mask, cv::Point(400, 300), 100, cv::Scalar(255), cv::FILLED);
+        ring.copyTo(img, inner_mask);
+        LightingResult r = LightingCheck().Analyse(img);
+        ASSERT_TRUE(r.located) << dark_pct;
+        EXPECT_FALSE(Has(r.defects, DefectType::LIGHTING_CHECK)) << dark_pct << "% dark: " << r.leak_area_px;
+    }
+}

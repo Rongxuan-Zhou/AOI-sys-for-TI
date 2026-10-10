@@ -63,6 +63,10 @@ public:
     static cv::Mat PolarUnwrap(const cv::Mat& img, cv::Point2f c, float r_in, float r_out,
                                int out_w, int out_h);
 
+    /// Bring any frame to 8-bit: CV_16U is taken as 12-bit sensor data (/16),
+    /// CV_32F/CV_64F as 0..1 (x255); values beyond those ranges saturate.
+    static cv::Mat To8U(const cv::Mat& img);
+
     /// Algebraic (Kasa) least-squares circle fit. Returns false for degenerate input.
     static bool FitCircleLSQ(const std::vector<cv::Point>& pts, cv::Point2f& c, float& r);
 

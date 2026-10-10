@@ -33,6 +33,8 @@ struct LightingParams {
     float  edge_band_ratio   = 0.85f;  // staining band [edge_band_ratio * R, outer]
     int    unwrap_w          = 1440;
     int    unwrap_h          = 160;
+    double baseline_percentile = 0.75; // per-radius percentile of V/S; stays at the lit level
+                                       // while up to ~75 % of a ring is dark structure (slide 30)
     int    leak_residual_min = 45;     // V above the ring median
     int    leak_area_min_px  = 80;     // in unwrapped pixels
     int    stain_residual_min = 45;    // V below the ring median

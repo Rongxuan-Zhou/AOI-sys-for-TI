@@ -75,3 +75,23 @@ TEST(TopSide, GreyGranularPatchIsEpoxyExposal) {
     DefectDetector d(test::SyntheticParams());
     EXPECT_TRUE(Has(d.Detect(CameraID::CCD1_TOP, img), DefectType::EPOXY_EXPOSAL));
 }
+
+// The code ROI (and its exclusion mask) must follow the notch at any angle:
+// at CCD1 the parts still have arbitrary orientation (compensation is step 9).
+TEST(TopSide, GoodPartPassesAtOtherNotchAngles) {
+    for (float notch : {30.f, 120.f, 200.f, 300.f}) {
+        cv::Mat img = test::MakeDisc(800, 600, {400, 300}, 220.f, true, notch, 12.f);
+        const cv::Point2f P[4] = {{265, 200}, {355, 160}, {445, 160}, {535, 200}};
+        // pins rotated with the part so they stay away from the code ROI
+        float a = (notch - 90.f) * static_cast<float>(CV_PI) / 180.f;
+        for (const auto& p : P) {
+            cv::Point2f d = p - cv::Point2f(400, 300);
+            cv::Point2f q(400 + d.x * std::cos(a) - d.y * std::sin(a), 300 + d.x * std::sin(a) + d.y * std::cos(a));
+            test::DrawPinHead(img, q, 18.f, 10.f);
+        }
+        test::DrawCodeAlongNotch(img, {400, 300}, 30.f, notch);
+        DefectDetector d(test::SyntheticParams());
+        auto r = d.Detect(CameraID::CCD1_TOP, img);
+        for (const auto& x : r) ADD_FAILURE() << "notch " << notch << ": " << ToString(x.type) << " " << x.description;
+    }
+}

@@ -87,3 +87,10 @@ TEST(Side, EmptyFrameNotLocated) {
     ASSERT_EQ(r.size(), 1u);
     EXPECT_EQ(r[0].description, "disc not located");
 }
+
+TEST(Side, SeverelyBentPinIsStillBent) {
+    for (float bend : {30.f, 45.f, 60.f}) {
+        cv::Mat img = test::MakeSideView(800, 500, BODY, {300, 400, 500}, {0, bend, 0}, {120, 120, 120});
+        EXPECT_TRUE(Has(BenchDetector().Detect(CameraID::CCD2_SIDE, img), DefectType::PIN_BENT)) << bend;
+    }
+}

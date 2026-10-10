@@ -116,3 +116,21 @@ namespace aoi::test {
 /// Detection parameters for the synthetic test scale (header defaults).
 inline DetectionParams SyntheticParams() { return DetectionParams{}; }
 }  // namespace aoi::test
+
+namespace aoi::test {
+/// Two-line code laid along the key-notch direction: drawn as if the notch were at
+/// 90 deg (below the disc centre), then rotated about disc_centre to notch_angle_deg.
+inline void DrawCodeAlongNotch(cv::Mat& img, cv::Point2f disc_centre, float offset_px,
+                               float notch_angle_deg) {
+    cv::Mat canvas(img.size(), CV_8UC3, cv::Scalar(255, 255, 255));
+    DrawCode(canvas, disc_centre + cv::Point2f(0.f, offset_px), false);
+    cv::Mat rot = cv::getRotationMatrix2D(disc_centre, 90.f - notch_angle_deg, 1.0);
+    cv::Mat rotated;
+    cv::warpAffine(canvas, rotated, rot, canvas.size(), cv::INTER_LINEAR, cv::BORDER_CONSTANT,
+                   cv::Scalar(255, 255, 255));
+    cv::Mat gray, ink;
+    cv::cvtColor(rotated, gray, cv::COLOR_BGR2GRAY);
+    cv::threshold(gray, ink, 200, 255, cv::THRESH_BINARY_INV);
+    rotated.copyTo(img, ink);
+}
+}  // namespace aoi::test

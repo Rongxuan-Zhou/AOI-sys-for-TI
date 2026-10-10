@@ -202,6 +202,7 @@ PYBIND11_MODULE(_aoi_vision_core, m) {
         .def_readwrite("edge_band_ratio",    &LightingParams::edge_band_ratio)
         .def_readwrite("unwrap_w",           &LightingParams::unwrap_w)
         .def_readwrite("unwrap_h",           &LightingParams::unwrap_h)
+        .def_readwrite("baseline_percentile",&LightingParams::baseline_percentile)
         .def_readwrite("leak_residual_min",  &LightingParams::leak_residual_min)
         .def_readwrite("leak_area_min_px",   &LightingParams::leak_area_min_px)
         .def_readwrite("stain_residual_min", &LightingParams::stain_residual_min)

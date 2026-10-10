@@ -64,3 +64,24 @@ TEST(Routing, SetParamsPropagates) {
     EXPECT_FLOAT_EQ(d.GetParams().locator.notch_width_deg, 9.f);
     EXPECT_EQ(d.GetParams().lighting.leak_residual_min, 77);
 }
+
+// 12-bit sensors deliver Mono12 in a 16-bit container; float frames come from
+// preprocessing. Neither may throw, and a real disc must still be located.
+TEST(Routing, NonEightBitFramesDoNotThrow) {
+    DefectDetector d(test::SyntheticParams());
+    cv::Mat disc8 = test::MakeDisc(640, 480, {320, 240}, 150.f);
+    cv::Mat disc16, discf;
+    disc8.convertTo(disc16, CV_16U, 4095.0 / 255.0);   // 12-bit scale
+    disc8.convertTo(discf, CV_32F, 1.0 / 255.0);        // 0..1 float
+    for (auto cam : {CameraID::CCD1_TOP, CameraID::CCD3_BOTTOM, CameraID::CCD4_INNER, CameraID::CCD2_SIDE}) {
+        std::vector<DefectResult> r16, rf;
+        EXPECT_NO_THROW(r16 = d.Detect(cam, disc16)) << static_cast<int>(cam);
+        EXPECT_NO_THROW(rf = d.Detect(cam, discf)) << static_cast<int>(cam);
+    }
+    auto r16 = d.Detect(CameraID::CCD3_BOTTOM, disc16);
+    auto rf = d.Detect(CameraID::CCD3_BOTTOM, discf);
+    for (const auto& x : r16) EXPECT_NE(x.description, "disc not located");
+    for (const auto& x : rf) EXPECT_NE(x.description, "disc not located");
+    cv::Mat gray16(480, 640, CV_16UC1, cv::Scalar(0));
+    EXPECT_NO_THROW(d.Detect(CameraID::CCD1_TOP, gray16));
+}

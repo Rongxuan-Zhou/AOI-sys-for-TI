@@ -14,6 +14,19 @@ namespace aoi {
 
 CseLocator::CseLocator(LocatorParams p) : p_(p) {}
 
+cv::Mat CseLocator::To8U(const cv::Mat& img) {
+    if (img.empty() || img.depth() == CV_8U) return img;
+    cv::Mat out;
+    switch (img.depth()) {
+        case CV_16U: img.convertTo(out, CV_8U, 1.0 / 16.0); break;          // 12-bit in a 16-bit container
+        case CV_16S: img.convertTo(out, CV_8U, 1.0 / 16.0); break;
+        case CV_32F:
+        case CV_64F: img.convertTo(out, CV_8U, 255.0); break;              // 0..1 float
+        default:     img.convertTo(out, CV_8U); break;
+    }
+    return out;
+}
+
 // ---------------------------------------------------------------------------
 // Foreground: everything brighter than the black background (V > disc_fg_thresh),
 // so the amber epoxy and the pin holes stay part of the disc even when they
@@ -68,9 +81,10 @@ bool CseLocator::FitCircleLSQ(const std::vector<cv::Point>& pts, cv::Point2f& c,
 // ---------------------------------------------------------------------------
 // Locate
 // ---------------------------------------------------------------------------
-CseGeometry CseLocator::Locate(const cv::Mat& img) const {
+CseGeometry CseLocator::Locate(const cv::Mat& img_in) const {
     CseGeometry g;
-    if (img.empty()) return g;
+    if (img_in.empty()) return g;
+    cv::Mat img = To8U(img_in);
 
     cv::Mat fg;
     if (!Foreground(img, fg)) return g;

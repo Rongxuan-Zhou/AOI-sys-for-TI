@@ -113,7 +113,8 @@ thickness_classes: [amber, green, blue] # slide 31: thick samples look green or 
 # Keys mirror aoi::LightingParams (src/vision/LightingCheck.h), production scale
 # (5472 x 3648, 0.0069 mm/px).
 inspection_thresholds:
-  baseline_mode: ring_median            # per-radius ring median of the unwrapped annulus (only mode implemented)
+  baseline_mode: ring_percentile        # per-radius percentile of the unwrapped annulus (only mode implemented)
+  baseline_percentile: 0.75             # survives up to ~75 % dark structure per ring (slide 30)
   inner_zone_ratio: 0.40
   outer_zone_ratio: 0.98
   edge_band_ratio: 0.85
