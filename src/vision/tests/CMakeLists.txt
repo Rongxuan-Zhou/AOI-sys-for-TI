@@ -8,6 +8,7 @@ add_executable(aoi_vision_tests
     test_lighting_check.cpp
     test_top_side.cpp
     test_contamination.cpp
+    test_side_view.cpp
 )
 target_include_directories(aoi_vision_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(aoi_vision_tests PRIVATE aoi_vision_algo GTest::gtest GTest::gtest_main)

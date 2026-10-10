@@ -625,9 +625,160 @@ std::vector<DefectResult> DefectDetector::DetectCode(const cv::Mat& bgr, const C
     }
     return out;
 }
-std::vector<DefectResult> DefectDetector::DetectPinsSide(const cv::Mat&, const cv::Mat&,
-                                                         const cv::Rect&) { return {}; }
-std::vector<DefectResult> DefectDetector::DetectGoldExposal(const cv::Mat&, const cv::Rect&) { return {}; }
-std::vector<DefectResult> DefectDetector::DetectEpoxyBump(const cv::Mat&, const cv::Rect&) { return {}; }
+// ---------------------------------------------------------------------------
+// Side-view pins (slide 43). Internal orientation: pins hang below the body.
+//   bent     line fit angle from vertical
+//   mis-cut  length outside the nominal band
+//   bur      tip rows wider than the pin body
+//   oxidized pin is dull/dark instead of bright gold
+// ---------------------------------------------------------------------------
+std::vector<DefectResult> DefectDetector::DetectPinsSide(const cv::Mat& bgr, const cv::Mat& fg,
+                                                         const cv::Rect& body) {
+    std::vector<DefectResult> out;
+    const CameraID cam = CameraID::CCD2_SIDE;
+    const int y_b = body.y + body.height;
+    if (y_b + 2 >= fg.rows) return out;
+
+    cv::Mat below = cv::Mat::zeros(fg.size(), CV_8U);
+    fg.rowRange(y_b + 2, fg.rows).copyTo(below.rowRange(y_b + 2, fg.rows));
+
+    cv::Mat labels, stats, centroids;
+    int n = cv::connectedComponentsWithStats(below, labels, stats, centroids, 8, CV_32S);
+
+    cv::Mat hsv;
+    cv::cvtColor(bgr, hsv, cv::COLOR_BGR2HSV);
+    std::vector<cv::Mat> ch(3);
+    cv::split(hsv, ch);
+
+    for (int i = 1; i < n; ++i) {
+        int w = stats.at<int>(i, cv::CC_STAT_WIDTH);
+        int h = stats.at<int>(i, cv::CC_STAT_HEIGHT);
+        int area = stats.at<int>(i, cv::CC_STAT_AREA);
+        int x0 = stats.at<int>(i, cv::CC_STAT_LEFT);
+        int y0 = stats.at<int>(i, cv::CC_STAT_TOP);
+        if (area < 20 || h < 0.3 * params_.pin_length_px || w > 0.5 * h) continue;  // not a pin
+        cv::Rect bb(x0, y0, w, h);
+        cv::Mat comp = (labels(bb) == i);
+
+        // --- bent: angle of the fitted line from the vertical
+        std::vector<cv::Point> pts;
+        cv::findNonZero(comp, pts);
+        cv::Vec4f line;
+        cv::fitLine(pts, line, cv::DIST_L2, 0, 0.01, 0.01);
+        double angle = std::atan2(std::fabs(line[0]), std::fabs(line[1])) * 180.0 / CV_PI;
+        if (angle > params_.pin_bend_angle_deg_max) {
+            out.push_back(Make(DefectType::PIN_BENT, static_cast<float>(angle / (5.0 * params_.pin_bend_angle_deg_max)),
+                               bb, cam, "pin angle " + std::to_string(angle) + " deg"));
+        }
+
+        // --- mis-cut: length from the body edge to the tip
+        int length = (y0 + h) - y_b;
+        if (std::abs(length - params_.pin_length_px) > params_.pin_length_tol_px) {
+            out.push_back(Make(DefectType::PIN_MIS_CUT,
+                               static_cast<float>(std::abs(length - params_.pin_length_px) / (3.0 * params_.pin_length_tol_px)),
+                               bb, cam, "pin length " + std::to_string(length) + " px"));
+        }
+
+        // --- bur: tip rows wider than the pin body
+        std::vector<int> widths(h);
+        for (int r = 0; r < h; ++r) widths[r] = cv::countNonZero(comp.row(r));
+        std::vector<int> sorted(widths);
+        std::sort(sorted.begin(), sorted.end());
+        int median_w = sorted[h / 2];
+        int tip_max = 0;
+        for (int r = std::max(0, h - 6); r < h; ++r) tip_max = std::max(tip_max, widths[r]);
+        if (tip_max - median_w > params_.pin_bur_width_px) {
+            cv::Rect tip(bb.x, bb.y + std::max(0, h - 6), bb.width, std::min(6, h));
+            out.push_back(Make(DefectType::PIN_BUR, static_cast<float>((tip_max - median_w) / (3.0 * params_.pin_bur_width_px)),
+                               tip, cam, "tip width " + std::to_string(tip_max) + " vs " + std::to_string(median_w)));
+        }
+
+        // --- oxidized: dull / dark pin instead of bright gold
+        cv::Mat full = cv::Mat::zeros(fg.size(), CV_8U);
+        comp.copyTo(full(bb));
+        cv::Mat sat_mask;
+        cv::threshold(ch[1], sat_mask, 60, 255, cv::THRESH_BINARY);
+        cv::bitwise_and(sat_mask, full, sat_mask);
+        cv::Mat vmask = cv::countNonZero(sat_mask) > 0 ? sat_mask : full;
+        double mean_v = cv::mean(ch[2], vmask)[0];
+        if (mean_v < params_.pin_oxide_val_max) {
+            out.push_back(Make(DefectType::PIN_OXIDIZED, static_cast<float>(1.0 - mean_v / params_.pin_oxide_val_max),
+                               bb, cam, "pin brightness " + std::to_string(static_cast<int>(mean_v))));
+        }
+    }
+    return out;
+}
+
+// ---------------------------------------------------------------------------
+// GOLD_EXPOSAL — brown/gold patch on the white ceramic side wall (slide 37)
+// ---------------------------------------------------------------------------
+std::vector<DefectResult> DefectDetector::DetectGoldExposal(const cv::Mat& bgr, const cv::Rect& body) {
+    std::vector<DefectResult> out;
+    cv::Rect roi = body & cv::Rect(0, 0, bgr.cols, bgr.rows);
+    if (roi.area() <= 0) return out;
+    cv::Mat hsv;
+    cv::cvtColor(bgr(roi), hsv, cv::COLOR_BGR2HSV);
+    cv::Mat gold;
+    cv::inRange(hsv, cv::Scalar(10, 60, 60), cv::Scalar(35, 255, 220), gold);
+    cv::Mat k3 = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(3, 3));
+    cv::morphologyEx(gold, gold, cv::MORPH_OPEN, k3);
+
+    std::vector<std::vector<cv::Point>> contours;
+    cv::findContours(gold, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    for (const auto& c : contours) {
+        double area = cv::contourArea(c);
+        if (area < params_.gold_area_min_px) continue;
+        cv::Rect bb = cv::boundingRect(c);
+        bb.x += roi.x;
+        bb.y += roi.y;
+        out.push_back(Make(DefectType::GOLD_EXPOSAL, static_cast<float>(area / (5.0 * params_.gold_area_min_px)), bb,
+                           CameraID::CCD2_SIDE, "gold patch " + std::to_string(static_cast<int>(area)) + " px"));
+    }
+    return out;
+}
+
+// ---------------------------------------------------------------------------
+// EPOXY_HIGHER_THAN_CERAMIC — bump in the body's top-edge profile
+// ---------------------------------------------------------------------------
+std::vector<DefectResult> DefectDetector::DetectEpoxyBump(const cv::Mat& fg, const cv::Rect& body) {
+    std::vector<DefectResult> out;
+    if (body.width <= 0) return out;
+    const int search_top = std::max(0, body.y - 4 * params_.epoxy_bump_px);
+    const int search_bot = std::min(fg.rows - 1, body.y + body.height / 2);
+
+    std::vector<int> top(body.width, -1);
+    for (int i = 0; i < body.width; ++i) {
+        int x = body.x + i;
+        if (x < 0 || x >= fg.cols) continue;
+        for (int y = search_top; y <= search_bot; ++y) {
+            if (fg.at<uchar>(y, x)) { top[i] = y; break; }
+        }
+    }
+    std::vector<int> valid;
+    for (int t : top) if (t >= 0) valid.push_back(t);
+    if (valid.empty()) return out;
+    std::sort(valid.begin(), valid.end());
+    int median_top = valid[valid.size() / 2];
+
+    int run_start = -1;
+    for (int i = 0; i <= body.width; ++i) {
+        bool bump = i < body.width && top[i] >= 0 && (median_top - top[i]) > params_.epoxy_bump_px;
+        if (bump && run_start < 0) run_start = i;
+        if (!bump && run_start >= 0) {
+            int len = i - run_start;
+            if (len >= params_.epoxy_bump_width_px) {
+                int rise = 0;
+                for (int k = run_start; k < i; ++k) rise = std::max(rise, median_top - top[k]);
+                cv::Rect bb(body.x + run_start, median_top - rise, len, rise + 2);
+                out.push_back(Make(DefectType::EPOXY_HIGHER_THAN_CERAMIC,
+                                   static_cast<float>(rise / (3.0 * params_.epoxy_bump_px)), bb,
+                                   CameraID::CCD2_SIDE,
+                                   "bump " + std::to_string(rise) + " px over " + std::to_string(len) + " columns"));
+            }
+            run_start = -1;
+        }
+    }
+    return out;
+}
 
 }  // namespace aoi
