@@ -110,3 +110,9 @@ inline cv::Mat MakeLitAnnulus(int w, int h, cv::Point2f c, float R, cv::Scalar b
 }
 
 }  // namespace aoi::test
+
+#include "DefectDetector.h"
+namespace aoi::test {
+/// Detection parameters for the synthetic test scale (header defaults).
+inline DetectionParams SyntheticParams() { return DetectionParams{}; }
+}  // namespace aoi::test
