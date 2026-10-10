@@ -1,9 +1,9 @@
 # Mechanical Design -- AOI for Texas Instruments CSE Semiconductor Products
 
-**Project:** Automated Optical Inspection System for TI CSE Products  
-**Built by:** Rongxuan Zhou, Sole Engineer  
-**Company:** Dinnar Automation  
-**Client:** Texas Instruments  
+**Project:** Automated Optical Inspection System for TI CSE Products
+**Built by:** Rongxuan Zhou, Sole Engineer
+**Company:** Dinnar Automation
+**Client:** Texas Instruments
 
 ---
 
@@ -97,7 +97,7 @@ graph LR
         T5["Transfer #5<br/>CCD#2 --> Unloading"]
         T6["Transfer #6<br/>NG Sorting"]
     end
-    
+
     T1 --> T2 --> T3 --> T4 --> T5
     T5 -->|NG path| T6
 ```
@@ -135,7 +135,7 @@ graph TD
         PICK_POS["CSE Pick Position<br/>(SCARA robot access)"]
         EBC["Empty Basket Collector"]
     end
-    
+
     STACK --> CYL_STACK
     CYL_STACK --> L_TRIG
     L_TRIG -->|"Single basket<br/>separated"| LIFTER
@@ -189,7 +189,7 @@ graph TD
         VS1["Vacuum Sensor #1"]
         VS2["Vacuum Sensor #2"]
     end
-    
+
     ARM --> BRACKET
     BRACKET --> N1
     BRACKET --> N2
@@ -240,7 +240,7 @@ graph TD
         BH["Blue Holder<br/>(Precision positioning guides)"]
         FLIP["180-degree Flip Mechanism<br/>(1st case orientation)"]
     end
-    
+
     PP --> VAC
     ECYL --> PP
     BH --> PP
@@ -276,25 +276,21 @@ CCD#4 performs a functional light-leakage test that requires a completely dark e
 graph TD
     subgraph "CCD#4 Closed Chamber (Cross-Section View)"
         direction TB
-        CAM["MV-GE2000C-T1P-C4 Camera<br/>+ DTCM110-48 Telecentric Lens<br/>(Mounted above chamber)"]
-        TOP_PLATE["Top Plate with Optical Port"]
-        SHADE["Mechanical Shade<br/>(Pneumatic cylinder actuated)"]
-        CHAMBER["Dark Chamber Enclosure<br/>(Light-tight housing)"]
-        GC["Glass Cover<br/>(Top surface of CSE)"]
-        CSE_POS["CSE Unit Position"]
-        SG["Sapphire Glass Substrate<br/>(Transparent, flat, durable)"]
-        LIGHT_BOX["Light Box Housing"]
-        LS["DN-HSP25-W<br/>Hyper Spot Light Source"]
+        LS["DN-HSP25-W<br/>Hyper Spot Light Source x4<br/>(on the shade carriage, above)"]
+        SHADE["Shell / Mechanical Shade<br/>(moves forward over the nest)"]
+        CHAMBER["Closed Chamber<br/>(light-tight when the shell is forward)"]
+        CSE_POS["CSE Unit on the nest"]
+        SG["Sapphire Glass Substrate<br/>(transparent support, flat, durable)"]
+        GC["Glass Cover<br/>(chamber window below the nest)"]
+        CAM["MV-GE2000C-T1P-C4 Camera x4<br/>+ DTCM110-48 Telecentric Lens<br/>(below the nest, looking up)"]
     end
-    
-    CAM --> TOP_PLATE
-    TOP_PLATE --> SHADE
+
+    LS --> SHADE
     SHADE --> CHAMBER
-    CHAMBER --> GC
-    GC --> CSE_POS
+    CHAMBER --> CSE_POS
     CSE_POS --> SG
-    SG --> LIGHT_BOX
-    LIGHT_BOX --> LS
+    SG --> GC
+    GC --> CAM
 ```
 
 ### 6.3 Component Details
@@ -302,15 +298,15 @@ graph TD
 **Sapphire Glass Substrate:**
 - Material: Synthetic sapphire (Al2O3 single crystal)
 - Properties: Excellent optical transmission (UV through visible), extremely high hardness (9 on Mohs scale), chemical inertness, thermal stability
-- Purpose: Serves as the transparent support surface for the CSE unit. The hyper spot light illuminates from below through the sapphire glass. Sapphire is chosen over standard glass because its superior flatness (lapped to optical quality) ensures consistent optical coupling, and its hardness prevents scratching from repeated unit loading/unloading.
+- Purpose: Serves as the transparent support surface for the CSE unit. The hyper spot light illuminates from above and the transmitted light passes down through the sapphire glass to the camera (spec slide 22). Sapphire is chosen over standard glass because its superior flatness (lapped to optical quality) ensures consistent optical coupling, and its hardness prevents scratching from repeated unit loading/unloading.
 
 **Glass Cover:**
-- Located on the top surface of the CSE unit (part of the CSE product itself)
-- Any light leaking through the CSE structure exits through this glass cover and is captured by the camera above.
+- The chamber window below the sapphire glass nest (spec slide 22), sealing the camera side of the chamber.
+- The transmitted light, including any leakage, passes through it to the four CCD#4 cameras mounted below.
 
 **Mechanical Shade:**
-- A pneumatic cylinder-actuated shade plate that closes over the chamber opening before image capture.
-- When closed, the chamber is completely sealed from ambient light.
+- The light source and shade move forward together and cover the four CSEs with a shell structure before image capture (spec slide 21).
+- When closed (SHADE_CLOSED sensor), the chamber is completely sealed from ambient light; the PLC raises error 6003 if it does not close within 500 ms.
 - Opens to allow unit loading/unloading via the transfer mechanism.
 - Shade open/close cycle time: approximately 100 ms.
 
@@ -321,13 +317,12 @@ graph TD
 
 ### 6.4 Inspection Sequence
 
-1. Transfer #1 places units into the chamber on the sapphire glass substrate.
-2. Mechanical shade closes (pneumatic cylinder extends).
-3. Hyper spot light activates.
-4. CCD#4 acquires image through the telecentric lens.
-5. Image is analyzed for any light reaching the camera through unintended paths.
-6. Hyper spot light deactivates.
-7. Mechanical shade opens.
+1. Transfer #1 places the 4 units on the sapphire glass nests (nest vacuum on).
+2. Light source and shade move forward; SHADE_CLOSED confirms the sealed chamber.
+3. One trigger pulse fires the four CCD#4 cameras; the Gardasoft strobe drives the hyper spot lights.
+4. The IPC analyses the transmitted-light annulus of each unit (leakage, staining on edge, yellow glass cement, nest alignment) and returns 4 results.
+5. Shade and light source move back; SHADE_OPEN confirms.
+6. Transfer #2 picks the units off the nests.
 8. Transfer #2 removes units from the chamber.
 
 ---
@@ -349,7 +344,7 @@ graph TD
         CCD2_CAM["CCD#2 Camera<br/>(Fixed position, horizontal view)"]
         BAR_LIGHT["DN-2BS32738-W<br/>Dual Bar Light"]
     end
-    
+
     GRIPPER --> LIFT
     LIFT --> MOTOR
     CCD2_CAM -.->|"Views unit side profile"| GRIPPER
@@ -392,7 +387,7 @@ graph TD
         STACK_POS["Full Tray Stack Position"]
         OUTPUT["Output Magazine<br/>(Operator unloading)"]
     end
-    
+
     EMPTY_TRAY --> TRAY_SEP
     TRAY_SEP --> FILL_POS
     FILL_POS -->|"All positions filled"| FULL_DET

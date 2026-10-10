@@ -1,9 +1,9 @@
 # Vision System -- AOI for Texas Instruments CSE Semiconductor Products
 
-**Project:** Automated Optical Inspection System for TI CSE Products  
-**Built by:** Rongxuan Zhou, Sole Engineer  
-**Company:** Dinnar Automation  
-**Client:** Texas Instruments  
+**Project:** Automated Optical Inspection System for TI CSE Products
+**Built by:** Rongxuan Zhou, Sole Engineer
+**Company:** Dinnar Automation
+**Client:** Texas Instruments
 
 ---
 
@@ -47,7 +47,7 @@ Mounting:     Vertical, looking downward onto top surface
 - **Contamination** -- dyeing (saturated colour), electrical (dark textured), non-electrical (light smudge)
 - **Marking code** -- No code, Code blur; the code ROI follows the key notch so inverted parts are read correctly
 
-**Illumination Strategy:**  
+**Illumination Strategy:**
 The DN-COS60-W coaxial light provides uniform, shadow-free illumination perpendicular to the top surface. Coaxial illumination is specifically chosen for flat, reflective surfaces (ceramic/metal lids) because it eliminates specular angle-dependent artifacts and provides consistent contrast for both surface defect detection and printed code reading. The coaxial geometry ensures that light reflected from the flat surface returns directly to the camera, while surface irregularities (scratches, contamination) scatter light away, creating high-contrast defect signatures.
 
 ---
@@ -70,10 +70,10 @@ Rotation:     360-degree motor rotation of CSE unit during capture
 - **Gold exposal** -- gold/brown patch on the white ceramic side wall (slide 37)
 - **Epoxy higher than ceramic** -- bump in the body's top-edge profile
 
-**Illumination Strategy:**  
+**Illumination Strategy:**
 The DN-2BS32738-W dual bar light is positioned to provide grazing-angle illumination along the pin row. Bar lights produce directional illumination that emphasizes three-dimensional features such as bent pins (which cast shadows at different angles than straight pins), burrs (which create bright spots from specular reflection at irregular facets), and oxidation (which alters surface reflectivity). The dual-bar configuration illuminates from two opposing angles to ensure all pin surfaces are visible regardless of rotation angle.
 
-**360-Degree Rotation Capture:**  
+**360-Degree Rotation Capture:**
 The CSE unit is gripped and lifted by a mechanical gripper, then rotated by a precision motor through a full 360 degrees. CCD#2 captures multiple frames during rotation (either at discrete angular intervals such as every 90 degrees for each pin row, or as a continuous sweep with triggered acquisition). This ensures complete inspection of all pins on all four sides of the package.
 
 ---
@@ -97,7 +97,7 @@ Timing:       Captures during Transfer #2 motion (pipelined)
 - **Misalignment** -- disc centre vs the calibrated fixture centre (critical)
 - **Contamination** -- electrical / non-electrical / dyeing, with the amber epoxy region masked as structure
 
-**Illumination Strategy:**  
+**Illumination Strategy:**
 Identical to CCD#1, the DN-COS60-W coaxial light provides uniform bottom-surface illumination. The upward-facing camera captures the bottom surface as the unit passes overhead during Transfer #2, which is the key cycle-time optimization -- bottom inspection happens during transfer, not as a separate stopped step. The coaxial geometry is essential for detecting cracks, which appear as dark lines on the otherwise uniformly bright ceramic surface.
 
 ---
@@ -111,12 +111,13 @@ Light:        DN-HSP25-W (Hyper spot light, white, high intensity)
 Resolution:   0.0069 mm/pixel
 FOV:          37.9 mm x 25.3 mm
 WD:           140 mm +/- 3 mm
-Mounting:     Vertical, enclosed in sealed dark chamber
-Chamber:      Sapphire glass substrate + glass cover, mechanical shade
+Mounting:     Vertical, below the nest, looking up through glass cover and sapphire glass
+Chamber:      Hyper light + shade above (move forward to close), CSE on sapphire glass (spec slides 21-22)
+Cameras:      4 per station, one per CSE of the batch (spec slide 10)
 ```
 
 **Defects Detected:**
-- **Lighting check** -- compact bright spot above the per-radius ring-median baseline of the transmitted-light annulus; colour independent (amber / green / blue thick samples, slide 31) (critical)
+- **Lighting check** -- compact bright spot above the per-radius ring-percentile baseline of the transmitted-light annulus; colour independent (amber / green / blue thick samples, slide 31) and tolerant of the dark banana / hole shadows (slide 30) (critical)
 - **Staining on edge** -- compact dark patch in the outer annulus band (inner staining residue)
 - **Yellow glass cement** -- yellow blob more saturated or brighter than its ring (inner staining residue)
 - **Misalignment** -- lit disc centre vs the dark nest ring (slide 45) (critical)
@@ -129,30 +130,30 @@ CCD#4 serves a fundamentally different purpose from the other three cameras. Whi
 
 ```mermaid
 graph TD
-    subgraph "CCD#4 Dark Chamber (Cross-Section)"
-        CAM["CCD#4 Camera<br/>MV-GE2000C-T1P-C4<br/>+ DTCM110-48 Telecentric Lens"]
-        GC["Glass Cover"]
+    subgraph "CCD#4 Closed Chamber (Cross-Section, spec slide 22, top to bottom)"
+        LS["DN-HSP25-W Hyper Spot Light<br/>(moves forward with the shade)"]
+        SHADE["Shell / Mechanical Shade<br/>(closes over the nest)"]
         CSE["CSE Unit Under Test"]
-        SG["Sapphire Glass Substrate"]
-        LS["DN-HSP25-W Hyper Spot Light"]
-        SHADE["Mechanical Shade<br/>(Closed During Test)"]
+        SG["Sapphire Glass Substrate<br/>(the CSE sits on it)"]
+        GC["Glass Cover<br/>(chamber window)"]
+        CAM["CCD#4 Camera x4<br/>MV-GE2000C-T1P-C4<br/>+ DTCM110-48 Telecentric Lens<br/>(below, looking up)"]
     end
-    
-    LS -->|"Light passes through<br/>sapphire glass substrate"| SG
-    SG -->|"Light enters CSE<br/>from below"| CSE
-    CSE -->|"Any leaked light<br/>exits through glass cover"| GC
-    GC -->|"Telecentric lens<br/>captures leakage pattern"| CAM
+
+    LS -->|"Transmitted light<br/>enters the CSE from above"| CSE
+    CSE -->|"Light through the ceramic<br/>and the leakage paths"| SG
+    SG --> GC
+    GC -->|"Telecentric lens<br/>captures the transmitted pattern"| CAM
     SHADE -.->|"Blocks all ambient light"| CSE
 ```
 
-1. The mechanical shade closes to create a completely dark environment, eliminating ambient light interference.
-2. The DN-HSP25-W hyper spot light illuminates the CSE from below through a sapphire glass substrate (sapphire chosen for its optical clarity, flatness, and durability).
-3. Light passes through the CSE glass structure from the bottom.
-4. If there is any leakage path (cracks in glass, seal failures, structural defects), light exits through the top glass cover.
-5. The MV-GE2000C-T1P-C4 with telecentric lens captures any leakage from above through the glass cover.
+1. Transfer #1 places the 4 CSEs on the sapphire glass nests; the light source and shade move forward and cover them with the shell (slide 21).
+2. The DN-HSP25-W hyper spot light illuminates each CSE from above; the camera below images the transmitted light through the sapphire glass and the glass cover.
+3. The transmitted pattern is an amber annulus with a dark centre (green or blue on thick samples, slide 31). The detector unwraps the annulus and judges residuals against a per-radius ring-percentile baseline, so the colour does not matter.
+4. A compact bright residual is light leakage ("light colour leakage", slide 5); a compact dark patch in the outer band is staining on edge; a yellow blob more saturated or brighter than its ring is yellow glass cement.
+5. The dark nest ring around the lit disc gives the alignment reference (slide 45).
 6. Telecentric optics ensure consistent magnification and eliminate perspective distortion, which is critical for quantifying leakage location and intensity.
 
-**Why Higher Resolution:**  
+**Why Higher Resolution:**
 The 20MP sensor (0.0069 mm/pixel) is used because light leakage defects can be extremely small -- a hairline crack in the glass structure may produce only a few pixels of bright signal against the dark background. The higher resolution and larger FOV (37.9 x 25.3 mm) ensure that even the smallest leakage paths are captured with sufficient pixel coverage for reliable detection.
 
 ---
@@ -168,13 +169,13 @@ graph LR
         PINS["3D Features<br/>(Pins/Sides)"]
         FUNC["Functional Test<br/>(Light Leakage)"]
     end
-    
+
     subgraph "Illumination Type"
         COAX["Coaxial Light<br/>DN-COS60-W"]
         BAR["Bar Light<br/>DN-2BS32738-W"]
         HYPER["Hyper Spot Light<br/>DN-HSP25-W"]
     end
-    
+
     FLAT --> COAX
     PINS --> BAR
     FUNC --> HYPER
@@ -229,32 +230,32 @@ For CCD#4 with the telecentric lens, spatial calibration is simplified because t
 flowchart TD
     TRIG["Hardware Trigger Signal<br/>(from PLC / Motion Controller)"] --> ACQ["Image Acquisition<br/>(Camera Exposure + Readout)"]
     ACQ --> PRE["Preprocessing"]
-    
+
     subgraph "Preprocessing"
         FF["Flat-Field Correction"]
         DIST["Distortion Correction"]
         ROI["ROI Extraction"]
         FF --> DIST --> ROI
     end
-    
+
     PRE --> DET["Defect Detection"]
-    
+
     subgraph "Defect Detection"
         SEG["Segmentation<br/>(Threshold / Edge / Blob)"]
         FEAT["Feature Extraction<br/>(Area, Shape, Intensity, Position)"]
         CLASS["Classification<br/>(Rule-Based + Learned Thresholds)"]
         SEG --> FEAT --> CLASS
     end
-    
+
     DET --> RESULT["Result Output"]
-    
+
     subgraph "Result Output"
         PASS_FAIL["Pass / NG Determination"]
         DEFECT_ID["Defect Category ID"]
         IMG_LOG["Image + Overlay Logging"]
         STAT["Statistics Update"]
     end
-    
+
     RESULT --> MC["Report to Main Controller<br/>(for sorting decision)"]
 ```
 
@@ -277,12 +278,18 @@ The detection pipeline combines multiple techniques depending on the defect type
 
 | Technique | Defect Types | Description |
 |-----------|-------------|-------------|
-| Template matching | Marking code (no code, code blur) | Compares against reference marking pattern; measures correlation score |
-| Blob analysis | Contamination, staining, epoxy issues | Segments anomalous regions by intensity/color thresholds; measures area, shape, intensity |
-| Edge detection | Cracks, broken, pin bent, pin mis-cut | Detects discontinuities and deviations from expected edge profiles |
-| Profile measurement | Pin bent, pin coplanarity | Measures pin tip positions against a reference plane; flags deviations beyond tolerance |
-| Intensity analysis | Oxidation, gold exposure, light leakage | Analyzes intensity/color histograms in defined regions; detects anomalous spectral signatures |
-| Pattern matching | Misalignment | Measures positional and angular offset from expected fiducial locations |
+| Disc geometry (`CseLocator`) | every station | Convex-hull + inlier least-squares circle fit, key-notch angle from the rim profile; interior mask and code ROI derive from it |
+| Rim profile | Broken | Radial residual runs along the rim; the key notch is exempt by angle, over-deep notches and any other run are BROKEN |
+| Black-hat + elongation | Crack | Dark thin structures inside the disc; `minAreaRect` long/short ratio separates cracks from dots |
+| Hole / core / ring analysis | Pin missing, insufficient epoxy, epoxy overflow | Dark unsaturated holes of the expected radius; a pin needs a bright metallic core; the amber ring fill and the connected epoxy area are measured per hole |
+| Texture + saturation | Epoxy exposal | Low-saturation, high local-std patch on the ceramic |
+| Blob classification | Dyeing / electrical / non-electrical contamination | Adaptive-threshold and saturation blobs; classified by mean saturation, darkness and texture |
+| Ink ratio + Laplacian variance | No code, code blur | Code ROI centred along the notch direction and rotated with it; ink fraction then sharpness |
+| Line fit / profile | Pin bent, mis-cut, bur, oxidized | Per-pin `fitLine` angle from vertical, length, tip width, brightness of the gold pin |
+| Hue segmentation | Gold exposal | Gold/brown patch on the ceramic side wall |
+| Top-edge profile | Epoxy higher than ceramic | Column-wise first foreground row vs the median top edge |
+| Ring-percentile residual | Lighting check, staining on edge, yellow glass cement | Polar unwrap of the CCD#4 annulus, per-radius 75th-percentile baseline, compact residual blobs |
+| Centre offset | Misalignment | Disc centre vs the calibrated fixture centre (CCD#1/#3) or the nest ring centre (CCD#4) |
 
 ### 6.4 Classification and Decision
 

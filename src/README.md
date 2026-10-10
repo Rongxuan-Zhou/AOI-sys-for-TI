@@ -17,9 +17,9 @@ src/
     DefectTypes.h            19 spec defects + 2 inner-residue sub-checks, groups, severities
     CseLocator.h/.cpp        Disc centre/radius (two-pass LSQ), key-notch angle, interior
                              mask, polar unwrap -- shared by every station
-    LightingCheck.h/.cpp     CCD#4 inner check: ring-median baseline on the unwrapped
-                             annulus, leakage / edge staining / yellow glass cement,
-                             nest-ring alignment, thickness class (amber/green/blue)
+    LightingCheck.h/.cpp     CCD#4 inner check: per-radius ring-percentile baseline on
+                             the unwrapped annulus (seam-wrapped), leakage / edge staining /
+                             yellow glass cement, nest-ring alignment, thickness class
     DefectDetector.h/.cpp    Per-station routing (spec slide 9) and the detectors:
                              crack, broken, misalignment, top-side pins and epoxy rings,
                              contamination classes, marking code, side-view pin
@@ -28,14 +28,16 @@ src/
     GigEVisionCapture.*      Hikrobot MVS SDK wrapper, one handle per (station, unit)
     pybind_module.cpp        Python bindings (_aoi_vision_core)
     CMakeLists.txt           AOI_WITH_MVS (default ON), AOI_BUILD_TESTS (default OFF)
-    tests/                   GoogleTest suite on synthetic CSE images
+    tests/                   GoogleTest suite (56 tests) on synthetic CSE images
 
   plc/                       IEC 61131-3 Structured Text, Mitsubishi iQ-R
-    main_sequence.st         State machine on the 18-step process flow (slide 15)
+    main_sequence.st         State machine on the 18-step process flow (slide 15);
+                             per-unit results, position-compared axis arrival (AT_TARGET),
+                             latched error requests, controlled axis stop in ST_ERROR
     servo_config.st          15 axes: 6 transfers, 4 theta units, 4 side rotators,
                              pitch e-cylinder; homing order
     safety_program.st        ISO 13849-1 PLd Cat.3 safety logic
-    io_mapping.csv           CC-Link IE Field remote I/O allocation
+    io_mapping.csv           CC-Link IE Field remote I/O allocation (148 DI / 78 DO)
 ```
 
 
@@ -58,8 +60,9 @@ SDK under `/opt/MVS` and pybind11.
   notch once; rim, interior and code ROI all derive from it, so an inverted
   part (notch at the top, slides 34/38) is read correctly.
 - **Colour-independent lighting check**: the CCD#4 judgement is a residual
-  against the per-radius ring median, so amber, green and blue samples
-  (slide 31) share one threshold set.
+  against the per-radius ring percentile (75th), so amber, green and blue
+  samples (slide 31) share one threshold set and large dark structure
+  (banana, hole shadows) does not shift the baseline.
 - **Spec routing wins**: gold exposal is a side-view defect (slide 37), the
   pins and their epoxy rings are top-side (slide 9), yellow glass cement and
   staining on edge belong to the inner check (slide 8).

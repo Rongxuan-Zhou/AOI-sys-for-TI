@@ -30,7 +30,7 @@
       </div>
       <div class="arch-layer application">
         <div class="arch-layer-title">Transfer System Layer</div>
-        <div class="arch-grid arch-grid-6"><div class="arch-box tech">Transfer #1<br><small>To lighting check</small></div><div class="arch-box tech">Transfer #2<br><small>Triggers CCD#3<br>during motion</small></div><div class="arch-box tech">Transfer #3<br><small>To top check</small></div><div class="arch-box tech">Transfer #4<br><small>Orientation comp.<br>servo rotation</small></div><div class="arch-box tech">Transfer #5<br><small>To unloading</small></div><div class="arch-box tech">Transfer #6<br><small>Tray handling</small></div></div>
+        <div class="arch-grid arch-grid-6"><div class="arch-box tech">Transfer #1<br><small>To lighting check</small></div><div class="arch-box tech">Transfer #2<br><small>Triggers CCD#3<br>during motion</small></div><div class="arch-box tech">Transfer #3<br><small>To top check</small></div><div class="arch-box tech">Transfer #4<br><small>4 theta units<br>orientation comp.</small></div><div class="arch-box tech">Transfer #5<br><small>To tray / NG belt</small></div><div class="arch-box tech">Transfer #6<br><small>NG belt to NG / OK tray</small></div></div>
       </div>
       <div class="arch-layer ai">
         <div class="arch-layer-title">Vision Inspection Layer</div>
@@ -47,7 +47,7 @@
       </div>
       <div class="arch-layer external">
         <div class="arch-layer-title">NG Management Layer</div>
-        <div class="arch-grid arch-grid-4"><div class="arch-box highlight">NG Check CCD<br><small>Reconfirmation<br>before sorting</small></div><div class="arch-box">NG Conveyor<br><small>Belt + holder bar<br>position stop</small></div><div class="arch-box">NG Tray<br><small>Sorted by<br>defect category</small></div><div class="arch-box">False Reject Recovery<br><small>Route back to<br>OK unloading</small></div></div>
+        <div class="arch-grid arch-grid-4"><div class="arch-box highlight">NG Check CCD<br><small>Reconfirmation<br>before sorting</small></div><div class="arch-box">NG Conveyor<br><small>Belt + holder bar<br>position stop</small></div><div class="arch-box">NG Tray<br><small>Confirmed NG</small></div><div class="arch-box">False Reject Recovery<br><small>Route back to<br>OK unloading</small></div></div>
       </div>
       <div class="arch-layer data">
         <div class="arch-layer-title">Output Layer</div>
@@ -59,7 +59,7 @@
       </div>
     </div>
     <div class="arch-sidebar">
-      <div class="arch-sidebar-panel"><div class="arch-sidebar-title">Camera Models</div><div class="arch-sidebar-item">Hikrobot MV-GE501GC</div><div class="arch-sidebar-item">Hikrobot MV-GE2000C</div><div class="arch-sidebar-item">NG Check CCD</div><div class="arch-sidebar-item">Orientation CCD</div></div>
+      <div class="arch-sidebar-panel"><div class="arch-sidebar-title">Camera Models</div><div class="arch-sidebar-item">Hikrobot MV-GE501GC x4 per station</div><div class="arch-sidebar-item">Hikrobot MV-GE2000C x4</div><div class="arch-sidebar-item">NG Check CCD</div><div class="arch-sidebar-item">Orientation CCD</div></div>
       <div class="arch-sidebar-panel"><div class="arch-sidebar-title">Optics</div><div class="arch-sidebar-item">WWK03-110-230 x3</div><div class="arch-sidebar-item">DTCM110-48 telecentric</div><div class="arch-sidebar-item">DN-COS60-W coaxial</div><div class="arch-sidebar-item">DN-2BS32738-W bar</div><div class="arch-sidebar-item">DN-HSP25-W hyper</div></div>
       <div class="arch-sidebar-panel"><div class="arch-sidebar-title">Standards</div><div class="arch-sidebar-item">ISO 13849 PLd</div><div class="arch-sidebar-item">IEC 61496</div><div class="arch-sidebar-item">ISO 13850 E-Stop</div><div class="arch-sidebar-item">ISO 12100</div></div>
     </div>

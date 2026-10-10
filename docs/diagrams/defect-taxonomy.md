@@ -62,40 +62,42 @@ mindmapDiagram {
 }
 </style>
 
-*[#1e3a5f] <b>19 Defect Categories</b>\n<i>100% Detection Rate\n4-CCD Multi-Angle AOI</i>
+*[#1e3a5f] <b>19 Defect Categories</b>\n<i>Spec V1.4 slide 8 | 100% on samples\n4 stations x 4 cameras</i>
 
-**[#dbeafe]:Function (8)
+**[#dbeafe]:Function (9)
 <i>Functional integrity defects</i>;
-***[#dbeafe] Lighting Check <<functional>>\n<size:9>CCD#4 | Light leakage\nClosed chamber test</size>
-***[#fecdd3] Crack <<critical>>\n<size:9>CCD#1 / CCD#3 | CRITICAL\nEdge + surface fracture</size>
-***[#fecdd3] Broken <<critical>>\n<size:9>CCD#1 / CCD#3 | CRITICAL\nStructural failure</size>
-***[#dbeafe] Epoxy Exposal <<functional>>\n<size:9>CCD#1 | Epoxy visible\non ceramic surface</size>
-***[#dbeafe] Pin Missing <<functional>>\n<size:9>CCD#1 | Absent pin\ngeometry check</size>
-***[#dbeafe] Electrical Contamination <<functional>>\n<size:9>CCD#1 | Conductive\nforeign matter</size>
-***[#dbeafe] Gold Exposal <<functional>>\n<size:9>CCD#2 | Gold layer\nexposed on side</size>
-***[#dbeafe] Insufficient Epoxy <<functional>>\n<size:9>CCD#1 | Below minimum\ncoverage threshold</size>
+***[#fecdd3] Lighting Check <<critical>>\n<size:9>CCD#4 | CRITICAL\nTransmitted-light leakage</size>
+***[#fecdd3] Crack <<critical>>\n<size:9>CCD#1 / CCD#3 | CRITICAL\nThin dark structure</size>
+***[#fecdd3] Broken <<critical>>\n<size:9>CCD#1 / CCD#3 | CRITICAL\nRim chip, notch exempt</size>
+***[#dbeafe] Epoxy Exposal <<functional>>\n<size:9>CCD#1 | Granular grey\npatch next to a pin</size>
+***[#dbeafe] Pin Missing <<functional>>\n<size:9>CCD#1 | Hole without\nmetallic core</size>
+***[#dbeafe] Electrical Contamination <<functional>>\n<size:9>CCD#1 / CCD#3 | Dark\nmetallic textured streak</size>
+***[#dbeafe] Gold Exposal <<functional>>\n<size:9>CCD#2 | Gold patch\non the side wall</size>
+***[#dbeafe] Insufficient Epoxy <<functional>>\n<size:9>CCD#1 | Epoxy ring\naround a pin under-filled</size>
+***[#fef3c7] Epoxy Overflow <<sample_needed>>\n<size:9>CCD#1 | Epoxy blob\ntoo large (provisional)</size>
 
 left side
 
 **[#e0e7ff]:Cosmetic (4)
 <i>Visual appearance defects</i>;
-***[#e0e7ff] Dyeing Contamination <<cosmetic>>\n<size:9>CCD#1 | Purple/pink\nstaining on surface</size>
-***[#e0e7ff] Non-Electrical Contamination <<cosmetic>>\n<size:9>CCD#1 | Non-conductive\nforeign particles</size>
+***[#e0e7ff] Dyeing Contamination <<cosmetic>>\n<size:9>CCD#1 / CCD#3 | Saturated\ncolour stain</size>
+***[#e0e7ff] Non-Electrical Contamination <<cosmetic>>\n<size:9>CCD#1 / CCD#3 | Light\nsmudge</size>
 ***[#e0e7ff] No Code <<cosmetic>>\n<size:9>CCD#1 | Missing laser\nmarking entirely</size>
 ***[#e0e7ff] Code Blur <<cosmetic>>\n<size:9>CCD#1 | Illegible or\nsmeared marking</size>
 
-**[#fce7f3]:Assembly (5)
+**[#fce7f3]:Assembly (6)
 <i>Mechanical assembly defects</i>;
-***[#fecdd3] Pin Bent <<critical>>\n<size:9>CCD#2 | CRITICAL\nBent pin geometry</size>
-***[#fce7f3] Pin Oxidized <<assembly>>\n<size:9>CCD#2 | Surface\noxidation on pins</size>
-***[#fef3c7] Pin Bur <<sample_needed>>\n<size:9>CCD#2 | CRITICAL\nNeeds real sample</size>
-***[#fef3c7] Pin Mis-cut <<sample_needed>>\n<size:9>CCD#2\nNeeds real sample</size>
-***[#fce7f3] Epoxy Higher Than Ceramic <<assembly>>\n<size:9>CCD#1 | Height\nexceedance check</size>
+***[#fce7f3] Pin Bent <<assembly>>\n<size:9>CCD#2 | Angle from\nvertical beyond tolerance</size>
+***[#fce7f3] Pin Oxidized <<assembly>>\n<size:9>CCD#2 | Pin dull/dark\ninstead of gold</size>
+***[#fef3c7] Pin Bur <<sample_needed>>\n<size:9>CCD#2 | Tip wider than\nthe pin (provisional)</size>
+***[#fef3c7] Pin Mis-cut <<sample_needed>>\n<size:9>CCD#2 | Length out of\ntolerance (provisional)</size>
+***[#fce7f3] Epoxy Higher Than Ceramic <<assembly>>\n<size:9>CCD#2 | Bump in the\ntop-edge profile</size>
+***[#fecdd3] Misalignment <<critical>>\n<size:9>CCD#1 / CCD#3 / CCD#4 | CRITICAL\nCentre vs fixture / nest ring</size>
 
-**[#ecfdf5]:Alignment (2)
-<i>Positional accuracy defects</i>;
-***[#fecdd3] Misalignment <<critical>>\n<size:9>CCD#4 | CRITICAL\nComponent offset</size>
-***[#ecfdf5] Staining on Edge <<alignment>>\n<size:9>CCD#4 | Inner residue\nYellow glass cement</size>
+**[#ecfdf5]:Inner Staining Residue (2)
+<i>Sub-checks of the lighting check</i>;
+***[#ecfdf5] Staining on Edge <<alignment>>\n<size:9>CCD#4 | Dark compact patch\nin the outer band</size>
+***[#ecfdf5] Yellow Glass Cement <<alignment>>\n<size:9>CCD#4 | Yellow blob brighter /\nmore saturated than its ring</size>
 
 @endmindmap
 ```
@@ -105,17 +107,17 @@ left side
 | Marker | Meaning |
 |:-------|:--------|
 | Red background | CRITICAL defect -- zero tolerance, immediate reject |
-| Yellow background | Requires real production samples for validation |
+| Yellow background | No real sample in the V1.4 testing report -- thresholds marked `provisional` |
 | Blue background | Function group defect |
 | Purple background | Cosmetic group defect |
 | Pink background | Assembly group defect |
-| Green background | Alignment group defect |
+| Green background | Inner staining residue (lighting-check sub-checks) |
 
 ## CCD Assignment Summary
 
 | Camera | Defects Detected | Count |
 |:-------|:----------------|------:|
-| CCD#1 (Top) | Crack, Broken, Epoxy Exposal, Pin Missing, Electrical Contamination, Insufficient Epoxy, Dyeing Contamination, Non-Electrical Contamination, No Code, Code Blur, Epoxy Higher Than Ceramic | 11 |
-| CCD#2 (Side) | Gold Exposal, Pin Bent, Pin Oxidized, Pin Bur, Pin Mis-cut | 5 |
-| CCD#3 (Bottom) | Crack, Broken | 2 |
-| CCD#4 (Lighting) | Lighting Check, Misalignment, Staining on Edge | 3 |
+| CCD#1 (Top) | Crack, Broken, Misalignment, Pin Missing, Insufficient Epoxy, Epoxy Overflow, Epoxy Exposal, Dyeing / Electrical / Non-Electrical Contamination, No Code, Code Blur | 12 |
+| CCD#2 (Side) | Pin Bent, Pin Oxidized, Pin Bur, Pin Mis-cut, Gold Exposal, Epoxy Higher Than Ceramic | 6 |
+| CCD#3 (Bottom) | Crack, Broken, Misalignment, Dyeing / Electrical / Non-Electrical Contamination | 6 |
+| CCD#4 (Inner check) | Lighting Check, Staining on Edge, Yellow Glass Cement, Misalignment (nest ring) | 4 |

@@ -1,9 +1,9 @@
 # Defect Classification -- AOI for Texas Instruments CSE Semiconductor Products
 
-**Project:** Automated Optical Inspection System for TI CSE Products  
-**Built by:** Rongxuan Zhou, Sole Engineer  
-**Company:** Dinnar Automation  
-**Client:** Texas Instruments  
+**Project:** Automated Optical Inspection System for TI CSE Products
+**Built by:** Rongxuan Zhou, Sole Engineer
+**Company:** Dinnar Automation
+**Client:** Texas Instruments
 
 ---
 
@@ -271,10 +271,12 @@ The following defects are designated as critical, meaning they represent the hig
 
 | Defect | Reason for Critical Designation |
 |--------|---------------------------------|
+| Lighting Check | Light leakage through the ceramic: the functional test the machine exists for (spec slide 5) |
 | Crack | Compromises hermetic seal and mechanical integrity; potential latent field failure |
 | Broken | Severe structural damage; non-functional |
-| Pin Bur | Short-circuit risk; assembly interference; safety concern |
 | Misalignment | Pin-to-pad alignment failure; potential assembly and reliability issue |
+
+These are the four purple rows of the V1.4 testing report (slide 8). Pin Bur is purple *text* on that slide, not a purple row, and is not critical.
 
 Critical defects trigger an immediate NG classification with no allowance for borderline decisions. These units always pass through the NG Check CCD reconfirmation to ensure the rejection is not a false positive.
 
@@ -284,39 +286,39 @@ Critical defects trigger an immediate NG classification with no allowance for bo
 
 ```mermaid
 graph TD
-    subgraph "CCD#1 -- Top Surface"
-        D_SURF1["Top Surface Defects"]
+    subgraph "CCD#1 -- Top Surface (pins and code are on the top side)"
+        D_CRACK1["Crack (CRITICAL)"]
+        D_BROKEN1["Broken (CRITICAL)"]
+        D_ALIGN1["Misalignment (CRITICAL)"]
+        D_PMISSING["Pin Missing"]
+        D_INSEP["Insufficient Epoxy"]
+        D_EPOVF["Epoxy Overflow *"]
+        D_EPEXP["Epoxy Exposal"]
+        D_CONT1["Dyeing / Electrical / Non-Electrical Contamination"]
         D_MARK["No Code / Code Blur"]
-        D_ALIGN["Misalignment (CRITICAL)"]
-        D_ECONT1["Electrical Contamination"]
-        D_NECONT1["Non-Electrical Contamination"]
-        D_DYE1["Dyeing Contamination"]
-        D_STAIN1["Staining on Edge"]
     end
-    
-    subgraph "CCD#2 -- Side (360-degree)"
+
+    subgraph "CCD#2 -- Side (360-degree, 36 frames)"
         D_PBENT["Pin Bent"]
         D_POXI["Pin Oxidized"]
-        D_PBUR["Pin Bur (CRITICAL)"]
-        D_PMIS["Pin Mis-cut"]
+        D_PBUR["Pin Bur *"]
+        D_PMIS["Pin Mis-cut *"]
         D_GOLD["Gold Exposal"]
-        D_PMISSING["Pin Missing"]
         D_EPHI["Epoxy Higher Than Ceramic"]
     end
-    
+
     subgraph "CCD#3 -- Bottom Surface"
-        D_CRACK["Crack (CRITICAL)"]
-        D_BROKEN["Broken (CRITICAL)"]
-        D_EPEXP["Epoxy Exposal"]
-        D_INSEP["Insufficient Epoxy"]
-        D_SURF3["Bottom Surface Defects"]
-        D_ECONT3["Electrical Contamination"]
-        D_NECONT3["Non-Electrical Contamination"]
-        D_DYE3["Dyeing Contamination"]
+        D_CRACK3["Crack (CRITICAL)"]
+        D_BROKEN3["Broken (CRITICAL)"]
+        D_ALIGN3["Misalignment (CRITICAL)"]
+        D_CONT3["Dyeing / Electrical / Non-Electrical Contamination"]
     end
-    
-    subgraph "CCD#4 -- Lighting Check"
-        D_LIGHT["Light Leakage (Functional)"]
+
+    subgraph "CCD#4 -- Inner Check (closed chamber)"
+        D_LIGHT["Lighting Check (CRITICAL)"]
+        D_STAIN["Staining on Edge"]
+        D_CEMENT["Yellow Glass Cement"]
+        D_ALIGN4["Misalignment vs nest ring (CRITICAL)"]
     end
 ```
 

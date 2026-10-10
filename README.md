@@ -285,7 +285,7 @@ Per-station recipes. Threshold keys mirror the C++ parameter structs (`Detection
 | **Illumination** | DN-COS60-W coaxial (x2), DN-2BS32738-W dual bar (x1), DN-HSP25-W hyper spot (x1) |
 | **Material Handling** | Epson SCARA (RC700-A controller, SPEL+ TCP/IP), pitch change e-cylinder, 6 linear transfer axes |
 | **Control** | IPC (i7-12700 / 32GB / NVMe) + PLC (2ms scan, CC-Link IE Field) + EtherNet/IP CIP |
-| **Fieldbus** | CC-Link IE Field (1 Gbps, 0.5ms cyclic) -- 8 servo drives + remote I/O station |
+| **Fieldbus** | CC-Link IE Field (1 Gbps, 0.5ms cyclic) -- 15 servo drives + remote I/O stations |
 | **Safety** | ISO 13849-1 PLd Cat.3, Pilz PNOZ safety relay, IEC 61496 Type 2 light curtains, ISO 13850 E-Stop |
 | **Pneumatics** | SMC SY3000 valve manifold (19 solenoid valves), 0.4-0.6 MPa, vacuum generators |
 

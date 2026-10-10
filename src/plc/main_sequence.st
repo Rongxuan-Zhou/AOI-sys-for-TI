@@ -4,7 +4,7 @@
  * Controller:  Mitsubishi iQ-R Series (R16CPU + RJ71GF11-T2)
  * Network:     CC-Link IE Field 1 Gbps (15 servo axes + remote I/O)
  *              EtherNet/IP CIP implicit messaging (IPC vision host)
- * Scan:        0.5 ms fixed
+ * Scan:        2 ms fixed program scan; CC-Link IE Field cycle 0.5 ms
  * Author:      Rongxuan Zhou
  * Revision:    2.0 - states follow the 18-step process flow (spec slide 15)
  *
